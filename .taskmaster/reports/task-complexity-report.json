@@ -1,0 +1,93 @@
+{
+	"meta": {
+		"generatedAt": "2025-12-16T08:23:10.903Z",
+		"tasksAnalyzed": 10,
+		"totalTasks": 10,
+		"analysisCount": 10,
+		"thresholdScore": 5,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 1,
+			"taskTitle": "Setup Project Structure",
+			"complexityScore": 4,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down the setup process into subtasks for initializing the Next.js project, configuring TypeScript, and setting up TailwindCSS.",
+			"reasoning": "This task involves setting up a new project with specific technologies. While straightforward, it requires attention to detail in configuration and setup, especially with TailwindCSS integration."
+		},
+		{
+			"taskId": 2,
+			"taskTitle": "Implement Global Layout & Navigation",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divide the task into subtasks for header development, footer development, and role-based navigation logic.",
+			"reasoning": "Implementing a global layout involves creating reusable components and ensuring role-based navigation works correctly, which adds complexity."
+		},
+		{
+			"taskId": 3,
+			"taskTitle": "Develop Authentication & User Management",
+			"complexityScore": 8,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create subtasks for registration form development, login functionality, JWT token management, and profile management.",
+			"reasoning": "Authentication involves handling sensitive data, ensuring security, and managing user sessions, which are technically challenging and require thorough testing."
+		},
+		{
+			"taskId": 4,
+			"taskTitle": "Implement Job Discovery & Search",
+			"complexityScore": 7,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down into subtasks for search bar implementation, job listing with filters, and API integration for data fetching.",
+			"reasoning": "This task requires implementing complex search and filtering logic, as well as ensuring efficient data fetching and display."
+		},
+		{
+			"taskId": 5,
+			"taskTitle": "Create Job Detail & Application Management",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divide into subtasks for job detail page development, application actions for workers, and application management for employers.",
+			"reasoning": "Handling job details and applications involves multiple user interactions and error handling, increasing complexity."
+		},
+		{
+			"taskId": 6,
+			"taskTitle": "Develop Worker Dashboard & Experience",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Create subtasks for dashboard UI development, application management, review display, and certificate integration.",
+			"reasoning": "The dashboard requires integrating various data sources and ensuring a seamless user experience, which is technically demanding."
+		},
+		{
+			"taskId": 7,
+			"taskTitle": "Develop Employer Dashboard & Job Posting",
+			"complexityScore": 7,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "Break down into subtasks for dashboard UI, job posting form, API integration, and application management features.",
+			"reasoning": "Similar to the worker dashboard, this task involves complex interactions and data management, requiring careful implementation."
+		},
+		{
+			"taskId": 8,
+			"taskTitle": "Implement Complaints & Admin Resolution",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Divide into subtasks for complaint filing, admin dashboard development, and notification integration.",
+			"reasoning": "This task involves creating a new workflow for complaints and ensuring admin actions are reflected correctly, adding complexity."
+		},
+		{
+			"taskId": 9,
+			"taskTitle": "Implement Notifications System",
+			"complexityScore": 6,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Create subtasks for notification UI development, API integration, and notification management logic.",
+			"reasoning": "Developing a notification system requires real-time updates and efficient data handling, which can be challenging."
+		},
+		{
+			"taskId": 10,
+			"taskTitle": "System Tasks & Health Monitoring",
+			"complexityScore": 5,
+			"recommendedSubtasks": 2,
+			"expansionPrompt": "Break down into subtasks for system task integration and health check page development.",
+			"reasoning": "This task involves backend integration and ensuring system status is accurately reflected, which requires careful testing."
+		}
+	]
+}

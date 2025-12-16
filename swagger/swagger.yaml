@@ -1,0 +1,1445 @@
+openapi: 3.0.0
+info:
+  title: FixingApp Backend API
+  description: |
+    Backend MVP API for connecting employers with workers.
+    
+    This API provides endpoints for:
+    - Authentication and user management
+    - Job posting and management
+    - Job applications
+    - Worker verification
+    - Reviews and ratings
+    - Complaints handling
+    - Admin functions
+    
+    **Authentication**: Most endpoints require a JWT Bearer token in the Authorization header.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@fixingapp.com
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: http://localhost:3000/api
+    description: API base path
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Auth
+    description: Authentication and user registration
+  - name: Users
+    description: User profile management
+  - name: Jobs
+    description: Job posting and management
+  - name: Applications
+    description: Job applications
+  - name: Workers
+    description: Worker-specific endpoints
+  - name: Reviews
+    description: Worker reviews and ratings
+  - name: Complaints
+    description: Complaint handling
+  - name: Admin
+    description: Admin functions
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        message:
+          type: string
+          description: Detailed error message
+      example:
+        error: "Not Found"
+        message: "Route GET /api/invalid not found"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-12-16T03:50:41.179Z"
+        uptime:
+          type: number
+          description: Server uptime in seconds
+          example: 123.456
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        phone:
+          type: string
+          example: "0123456789"
+        fullName:
+          type: string
+          example: "John Doe"
+        address:
+          type: string
+          example: "123 Main St"
+        role:
+          type: string
+          enum: [EMPLOYER, WORKER, ADMIN]
+          example: "EMPLOYER"
+        createdAt:
+          type: integer
+          format: int64
+          example: 1702719041000
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        employerId:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "Fix leaking pipe"
+        description:
+          type: string
+          example: "Need to fix a leaking pipe in kitchen"
+        price:
+          type: integer
+          format: int64
+          example: 150000
+        address:
+          type: string
+          example: "123 Main St, City"
+        requiredSkill:
+          type: string
+          example: "Plumbing"
+        status:
+          type: string
+          enum: [CHUA_LAM, DANG_BAN_GIAO, DA_XONG]
+          example: "CHUA_LAM"
+        acceptedWorkerId:
+          type: integer
+          nullable: true
+          example: null
+        createdAt:
+          type: integer
+          format: int64
+          example: 1702719041000
+        updatedAt:
+          type: integer
+          format: int64
+          example: 1702719041000
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns the health status of the API server
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "ok"
+                timestamp: "2025-12-16T03:50:41.179Z"
+                uptime: 123.456
+
+  /api/auth/register-employer:
+    post:
+      tags:
+        - Auth
+      summary: Register as employer
+      description: Create a new employer account
+      operationId: registerEmployer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - password
+                - fullName
+              properties:
+                phone:
+                  type: string
+                  example: "0123456789"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                fullName:
+                  type: string
+                  example: "John Employer"
+                address:
+                  type: string
+                  example: "123 Main St"
+            example:
+              phone: "0123456789"
+              password: "password123"
+              fullName: "John Employer"
+              address: "123 Main St"
+      responses:
+        '201':
+          description: Employer registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request (e.g., duplicate phone)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/register-worker:
+    post:
+      tags:
+        - Auth
+      summary: Register as worker
+      description: Create a new worker account
+      operationId: registerWorker
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - password
+                - fullName
+                - skill
+              properties:
+                phone:
+                  type: string
+                  example: "0987654321"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                fullName:
+                  type: string
+                  example: "Jane Worker"
+                address:
+                  type: string
+                  example: "789 Worker St"
+                skill:
+                  type: string
+                  example: "Plumbing"
+            example:
+              phone: "0987654321"
+              password: "password123"
+              fullName: "Jane Worker"
+              address: "789 Worker St"
+              skill: "Plumbing"
+      responses:
+        '201':
+          description: Worker registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login
+      description: Authenticate and receive JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - password
+              properties:
+                phone:
+                  type: string
+                  example: "0123456789"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+            example:
+              phone: "0123456789"
+              password: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout
+      description: Logout (token invalidation optional in MVP)
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      description: Retrieve the authenticated user's profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Users
+      summary: Update current user profile
+      description: Update the authenticated user's profile
+      operationId: updateCurrentUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  example: "Updated Name"
+                address:
+                  type: string
+                  example: "Updated Address"
+            example:
+              fullName: "Updated Name"
+              address: "Updated Address"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs:
+    get:
+      tags:
+        - Jobs
+      summary: List available jobs
+      description: Get a list of open jobs (CHUA_LAM, DANG_BAN_GIAO status)
+      operationId: listJobs
+      parameters:
+        - name: keyword
+          in: query
+          description: Search keyword
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Filter by category/skill
+          required: false
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          description: Minimum price filter
+          required: false
+          schema:
+            type: integer
+        - name: maxPrice
+          in: query
+          description: Maximum price filter
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+
+    post:
+      tags:
+        - Jobs
+      summary: Create a new job
+      description: Create a new job posting (Employer only)
+      operationId: createJob
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - price
+                - address
+              properties:
+                title:
+                  type: string
+                  example: "Fix leaking pipe"
+                description:
+                  type: string
+                  example: "Need to fix a leaking pipe in kitchen"
+                price:
+                  type: integer
+                  format: int64
+                  example: 150000
+                address:
+                  type: string
+                  example: "123 Main St, City"
+                requiredSkill:
+                  type: string
+                  example: "Plumbing"
+                images:
+                  type: array
+                  items:
+                    type: string
+                  example: ["/static/pipe1.jpg"]
+            example:
+              title: "Fix leaking pipe"
+              description: "Need to fix a leaking pipe in kitchen"
+              price: 150000
+              address: "123 Main St, City"
+              requiredSkill: "Plumbing"
+              images: ["/static/pipe1.jpg"]
+      responses:
+        '201':
+          description: Job created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}:
+    get:
+      tags:
+        - Jobs
+      summary: Get job details
+      description: Get detailed information about a specific job
+      operationId: getJob
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Jobs
+      summary: Update job
+      description: Update a job posting (only if status is CHUA_LAM and no worker accepted)
+      operationId: updateJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: integer
+                address:
+                  type: string
+                requiredSkill:
+                  type: string
+      responses:
+        '200':
+          description: Job updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Bad request (e.g., cannot edit job with accepted worker)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Jobs
+      summary: Delete job
+      description: Delete a job posting (only if status is CHUA_LAM and no worker accepted)
+      operationId: deleteJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Job deleted successfully
+        '400':
+          description: Bad request (cannot delete job with accepted worker)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/my:
+    get:
+      tags:
+        - Jobs
+      summary: Get my jobs
+      description: Get all jobs posted by the authenticated employer
+      operationId: getMyJobs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/apply:
+    post:
+      tags:
+        - Applications
+      summary: Apply to a job
+      description: Submit an application to a job (Worker only)
+      operationId: applyToJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '201':
+          description: Application submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  jobId:
+                    type: integer
+                  workerId:
+                    type: integer
+                  status:
+                    type: string
+                    enum: [APPLIED]
+        '400':
+          description: Bad request (e.g., job already completed, duplicate application)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/applications:
+    get:
+      tags:
+        - Applications
+      summary: Get job applications
+      description: Get all applications for a job (Job owner only)
+      operationId: getJobApplications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    workerId:
+                      type: integer
+                    worker:
+                      type: object
+                    status:
+                      type: string
+                      enum: [APPLIED, ACCEPTED, REJECTED]
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/accept/{workerId}:
+    post:
+      tags:
+        - Applications
+      summary: Accept a worker
+      description: Accept a worker's application (Job owner only)
+      operationId: acceptWorker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: workerId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 2
+      responses:
+        '200':
+          description: Worker accepted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Bad request (e.g., worker didn't apply, already accepted another worker)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/reject/{workerId}:
+    post:
+      tags:
+        - Applications
+      summary: Reject a worker
+      description: Reject a worker's application (Job owner only)
+      operationId: rejectWorker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+        - name: workerId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 2
+      responses:
+        '200':
+          description: Worker rejected successfully
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/complete:
+    post:
+      tags:
+        - Jobs
+      summary: Complete a job
+      description: Mark a job as completed (Job owner only)
+      operationId: completeJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Job completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Bad request (e.g., job not in DANG_BAN_GIAO status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/reset:
+    post:
+      tags:
+        - Jobs
+      summary: Reset job status
+      description: Reset job status from DANG_BAN_GIAO to CHUA_LAM (Job owner only)
+      operationId: resetJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Job reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Bad request (e.g., job not in DANG_BAN_GIAO status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/jobs/{jobId}/review:
+    post:
+      tags:
+        - Reviews
+      summary: Review a worker
+      description: Submit a review for a worker after job completion (Job owner only)
+      operationId: reviewWorker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - stars
+              properties:
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+                comment:
+                  type: string
+                  example: "Excellent work! Very professional."
+            example:
+              stars: 5
+              comment: "Excellent work! Very professional."
+      responses:
+        '201':
+          description: Review submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  jobId:
+                    type: integer
+                  workerId:
+                    type: integer
+                  stars:
+                    type: integer
+                  comment:
+                    type: string
+        '400':
+          description: Bad request (e.g., job not completed, already reviewed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not job owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/workers/{workerId}/reviews:
+    get:
+      tags:
+        - Reviews
+      summary: Get worker reviews
+      description: Get all reviews for a specific worker
+      operationId: getWorkerReviews
+      parameters:
+        - name: workerId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    stars:
+                      type: integer
+                    comment:
+                      type: string
+                    employer:
+                      type: object
+                    createdAt:
+                      type: integer
+
+  /api/workers/certificates:
+    post:
+      tags:
+        - Workers
+      summary: Upload certificate
+      description: Upload a professional certificate (Worker only)
+      operationId: uploadCertificate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - imageUrl
+              properties:
+                imageUrl:
+                  type: string
+                  example: "/static/IELTS_7.5.jpg"
+            example:
+              imageUrl: "/static/IELTS_7.5.jpg"
+      responses:
+        '201':
+          description: Certificate uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  workerId:
+                    type: integer
+                  imageUrl:
+                    type: string
+                  status:
+                    type: string
+                    enum: [PENDING]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/workers/certificates/status:
+    get:
+      tags:
+        - Workers
+      summary: Get certificate status
+      description: Get certificate verification status (Worker only)
+      operationId: getCertificateStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certificate status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isVerified:
+                    type: boolean
+                  certificates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        imageUrl:
+                          type: string
+                        status:
+                          type: string
+                          enum: [PENDING, APPROVED, REJECTED]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/complaints:
+    post:
+      tags:
+        - Complaints
+      summary: File a complaint
+      description: Submit a complaint about a job
+      operationId: fileComplaint
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jobId
+                - reason
+              properties:
+                jobId:
+                  type: integer
+                  example: 1
+                reason:
+                  type: string
+                  example: "Worker did not show up on time"
+                evidences:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum: [IMAGE, LOG]
+                      url:
+                        type: string
+            example:
+              jobId: 1
+              reason: "Worker did not show up on time"
+              evidences:
+                - type: "IMAGE"
+                  url: "/static/evidence1.jpg"
+      responses:
+        '201':
+          description: Complaint filed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  jobId:
+                    type: integer
+                  reason:
+                    type: string
+                  status:
+                    type: string
+                    enum: [PENDING]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/complaints/my:
+    get:
+      tags:
+        - Complaints
+      summary: Get my complaints
+      description: Get all complaints filed by the authenticated user
+      operationId: getMyComplaints
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of complaints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    jobId:
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                      enum: [PENDING, RESOLVED]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/jobs/pending:
+    get:
+      tags:
+        - Admin
+      summary: Get pending jobs
+      description: Get all jobs pending approval (Admin only)
+      operationId: getPendingJobs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of pending jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/jobs/{jobId}/approve:
+    post:
+      tags:
+        - Admin
+      summary: Approve a job
+      description: Approve a job posting (Admin only)
+      operationId: approveJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Job approved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/jobs/{jobId}/reject:
+    post:
+      tags:
+        - Admin
+      summary: Reject a job
+      description: Reject a job posting (Admin only)
+      operationId: rejectJob
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: "Job description violates guidelines"
+      responses:
+        '200':
+          description: Job rejected successfully
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/certificates/pending:
+    get:
+      tags:
+        - Admin
+      summary: Get pending certificates
+      description: Get all certificates pending verification (Admin only)
+      operationId: getPendingCertificates
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of pending certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    workerId:
+                      type: integer
+                    imageUrl:
+                      type: string
+                    status:
+                      type: string
+                      enum: [PENDING]
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/certificates/{certId}/approve:
+    post:
+      tags:
+        - Admin
+      summary: Approve a certificate
+      description: Approve a worker certificate (Admin only)
+      operationId: approveCertificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: certId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Certificate approved successfully
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/certificates/{certId}/reject:
+    post:
+      tags:
+        - Admin
+      summary: Reject a certificate
+      description: Reject a worker certificate (Admin only)
+      operationId: rejectCertificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: certId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: "Certificate image is not clear"
+      responses:
+        '200':
+          description: Certificate rejected successfully
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/complaints:
+    get:
+      tags:
+        - Admin
+      summary: Get all complaints
+      description: Get all complaints (Admin only)
+      operationId: getAllComplaints
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of complaints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/complaints/{complaintId}/resolve:
+    post:
+      tags:
+        - Admin
+      summary: Resolve a complaint
+      description: Resolve a complaint with a decision (Admin only)
+      operationId: resolveComplaint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: complaintId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum: [ACCEPT, REJECT]
+                  example: "ACCEPT"
+                notes:
+                  type: string
+                  example: "Complaint is valid"
+            example:
+              decision: "ACCEPT"
+              notes: "Complaint is valid"
+      responses:
+        '200':
+          description: Complaint resolved successfully
+        '400':
+          description: Bad request (invalid decision)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
