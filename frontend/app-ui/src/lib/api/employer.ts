@@ -12,7 +12,7 @@ export interface CreateJobRequest {
   price: number;
   address: string;
   requiredSkill?: string | null;
-  images?: Array<{ type?: string; url: string }>;
+  images?: string[]; // Backend expects array of image URLs (strings), not objects
 }
 
 export async function createJob(body: CreateJobRequest): Promise<Job> {

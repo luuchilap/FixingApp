@@ -6,6 +6,59 @@
 const db = require('../../config/db');
 
 /**
+ * Normalize skill value - maps skill values to standardized ones
+ * If skill doesn't match any known skill, returns 'OTHER'
+ */
+function normalizeSkill(skill) {
+  if (!skill) return null;
+  
+  const upperSkill = skill.toUpperCase().trim();
+  
+  // Valid skill values (must match frontend constants)
+  const validSkills = [
+    'PLUMBING',
+    'ELECTRICAL',
+    'CARPENTRY',
+    'PAINTING',
+    'CLEANING',
+    'AC_REPAIR',
+    'APPLIANCE_REPAIR',
+    'MASONRY',
+    'GARDENING',
+    'OTHER'
+  ];
+  
+  // Check if it's already a valid skill
+  if (validSkills.includes(upperSkill)) {
+    return upperSkill;
+  }
+  
+  // Map old/common variations to new standardized values
+  const skillMap = {
+    'PLUMBING': 'PLUMBING',
+    'ELECTRICAL': 'ELECTRICAL',
+    'CARPENTRY': 'CARPENTRY',
+    'PAINTING': 'PAINTING',
+    'CLEANING': 'CLEANING',
+    'AC REPAIR': 'AC_REPAIR',
+    'AC_REPAIR': 'AC_REPAIR',
+    'APPLIANCE REPAIR': 'APPLIANCE_REPAIR',
+    'APPLIANCE_REPAIR': 'APPLIANCE_REPAIR',
+    'MASONRY': 'MASONRY',
+    'GARDENING': 'GARDENING',
+    'OTHER': 'OTHER'
+  };
+  
+  // Check if it's a known variation
+  if (skillMap[upperSkill]) {
+    return skillMap[upperSkill];
+  }
+  
+  // If not found, return OTHER
+  return 'OTHER';
+}
+
+/**
  * Create a new job
  */
 function createJob(req, res, next) {
@@ -28,7 +81,60 @@ function createJob(req, res, next) {
       });
     }
 
+    // Validate images if provided
+    if (images !== undefined && images !== null) {
+      if (!Array.isArray(images)) {
+        return res.status(400).json({
+          error: 'Invalid images format',
+          message: 'images must be an array of strings (image URLs)'
+        });
+      }
+
+      // Validate each image URL
+      for (let i = 0; i < images.length; i++) {
+        const imageUrl = images[i];
+        if (typeof imageUrl !== 'string') {
+          return res.status(400).json({
+            error: 'Invalid image format',
+            message: `Image at index ${i} must be a string (URL or base64 data URL)`
+          });
+        }
+
+        // Validate base64 data URL format if it's a data URL
+        if (imageUrl.startsWith('data:')) {
+          // Check if it's a valid data URL format: data:[<mediatype>][;base64],<data>
+          if (!imageUrl.match(/^data:image\/[^;]+;base64,/)) {
+            return res.status(400).json({
+              error: 'Invalid image format',
+              message: `Image at index ${i} is not a valid base64 image data URL`
+            });
+          }
+
+          // Check base64 data size
+          // Base64 encoding increases size by ~33%, so we check the string length
+          // For a 10MB original file, base64 would be ~13.3MB, so we allow up to 15MB base64 string
+          const base64Data = imageUrl.split(',')[1];
+          if (base64Data) {
+            const base64SizeKB = Math.ceil(base64Data.length / 1024);
+            const maxSizeKB = 15 * 1024; // 15MB in KB
+            
+            console.log(`Image ${i}: base64 size = ${base64SizeKB}KB (${(base64SizeKB / 1024).toFixed(2)}MB), max = ${maxSizeKB}KB`);
+            
+            if (base64Data.length > maxSizeKB * 1024) {
+              return res.status(400).json({
+                error: 'Image too large',
+                message: `Image at index ${i} is too large. Base64 size: ${(base64SizeKB / 1024).toFixed(2)}MB, maximum allowed: 15MB`
+              });
+            }
+          }
+        }
+      }
+    }
+
     const now = Date.now();
+    
+    // Normalize skill to ensure it matches one of the fixed skill values
+    const normalizedSkill = normalizeSkill(requiredSkill);
 
     // Create job and images in transaction
     const result = db.transaction(() => {
@@ -46,7 +152,7 @@ function createJob(req, res, next) {
         description,
         price,
         address,
-        requiredSkill || null,
+        normalizedSkill,
         now,
         now
       );
@@ -60,7 +166,9 @@ function createJob(req, res, next) {
         `);
         
         images.forEach((imageUrl, index) => {
-          insertImage.run(jobId, imageUrl, index === 0 ? 1 : 0);
+          // Ensure imageUrl is a string
+          const url = typeof imageUrl === 'string' ? imageUrl : String(imageUrl);
+          insertImage.run(jobId, url, index === 0 ? 1 : 0);
         });
       }
 
@@ -72,6 +180,7 @@ function createJob(req, res, next) {
 
     res.status(201).json(job);
   } catch (error) {
+    console.error('Error creating job:', error);
     next(error);
   }
 }
@@ -149,7 +258,7 @@ function listJobs(req, res, next) {
 
     // Get images for each job
     const jobsWithImages = jobs.map(job => {
-      const images = db.prepare('SELECT * FROM job_images WHERE job_id = ?').all(job.id);
+      const images = db.prepare('SELECT * FROM job_images WHERE job_id = ? ORDER BY is_primary DESC, id ASC').all(job.id);
       return {
         id: job.id,
         employerId: job.employer_id,
@@ -165,9 +274,8 @@ function listJobs(req, res, next) {
         createdAt: job.created_at,
         updatedAt: job.updated_at,
         images: images.map(img => ({
-          id: img.id,
-          imageUrl: img.image_url,
-          isPrimary: img.is_primary === 1
+          type: 'IMAGE',
+          url: img.image_url
         }))
       };
     });
@@ -269,8 +377,10 @@ function updateJob(req, res, next) {
       values.push(address);
     }
     if (requiredSkill !== undefined) {
+      // Normalize skill to ensure it matches one of the fixed skill values
+      const normalizedSkill = normalizeSkill(requiredSkill);
       updates.push('required_skill = ?');
-      values.push(requiredSkill);
+      values.push(normalizedSkill);
     }
 
     if (updates.length === 0) {
@@ -522,6 +632,7 @@ function resetJob(req, res, next) {
 
 /**
  * Helper function to get job with images
+ * Returns images in format expected by frontend: Array<{ type?: string; url: string }>
  */
 function getJobWithImages(jobId) {
   const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
@@ -530,7 +641,7 @@ function getJobWithImages(jobId) {
     return null;
   }
 
-  const images = db.prepare('SELECT * FROM job_images WHERE job_id = ?').all(jobId);
+  const images = db.prepare('SELECT * FROM job_images WHERE job_id = ? ORDER BY is_primary DESC, id ASC').all(jobId);
 
   return {
     id: job.id,
@@ -546,9 +657,8 @@ function getJobWithImages(jobId) {
     createdAt: job.created_at,
     updatedAt: job.updated_at,
     images: images.map(img => ({
-      id: img.id,
-      imageUrl: img.image_url,
-      isPrimary: img.is_primary === 1
+      type: 'IMAGE',
+      url: img.image_url
     }))
   };
 }

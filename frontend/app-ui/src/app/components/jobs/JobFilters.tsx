@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { SKILLS, type SkillValue } from "@/lib/constants/skills";
 
 export function JobFilters() {
   const router = useRouter();
@@ -9,7 +10,9 @@ export function JobFilters() {
   const searchParams = useSearchParams();
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
-  const [skill, setSkill] = useState(searchParams.get("skill") ?? "");
+  const [skill, setSkill] = useState<SkillValue | "">(
+    (searchParams.get("skill") as SkillValue) || ""
+  );
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") ?? "");
 
@@ -44,13 +47,18 @@ export function JobFilters() {
         </label>
         <label className="flex-1 text-sm font-medium text-slate-700">
           Skill
-          <input
-            type="text"
+          <select
             value={skill}
-            onChange={(e) => setSkill(e.target.value)}
+            onChange={(e) => setSkill(e.target.value as SkillValue | "")}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-            placeholder="Plumbing, Electrical..."
-          />
+          >
+            <option value="">-- Tất cả skill --</option>
+            {SKILLS.map((skillOption) => (
+              <option key={skillOption.value} value={skillOption.value}>
+                {skillOption.label}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 

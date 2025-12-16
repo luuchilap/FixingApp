@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../lib/hooks/useAuth";
+import { SKILLS, type SkillValue } from "@/lib/constants/skills";
 
 export function RegisterWorkerForm() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export function RegisterWorkerForm() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [address, setAddress] = useState("");
-  const [skill, setSkill] = useState("");
+  const [skill, setSkill] = useState<SkillValue | "">("");
   const [formError, setFormError] = useState<string | null>(null);
 
   const isSubmitting = status === "loading";
@@ -97,14 +98,19 @@ export function RegisterWorkerForm() {
 
       <label className="text-sm font-medium text-slate-700">
         Main skill*
-        <input
-          type="text"
+        <select
           value={skill}
-          onChange={(e) => setSkill(e.target.value)}
+          onChange={(e) => setSkill(e.target.value as SkillValue | "")}
           className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-          placeholder="Plumbing, AC repair, cleaning..."
           required
-        />
+        >
+          <option value="">-- Chọn skill --</option>
+          {SKILLS.map((skillOption) => (
+            <option key={skillOption.value} value={skillOption.value}>
+              {skillOption.label}
+            </option>
+          ))}
+        </select>
       </label>
 
       {(formError || error) && (

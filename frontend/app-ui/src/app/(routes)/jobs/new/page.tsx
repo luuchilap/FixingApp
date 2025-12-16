@@ -4,6 +4,56 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJob } from "@/lib/api/employer";
 import { useAuth } from "@/lib/hooks/useAuth";
+import type { ApiError } from "@/lib/api/http";
+import { SKILLS, type SkillValue } from "@/lib/constants/skills";
+
+// Maximum file size: 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Compress and resize image
+function compressImage(file: File, maxWidth: number = 1920, maxHeight: number = 1920, quality: number = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -12,7 +62,7 @@ export default function NewJobPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [address, setAddress] = useState("");
-  const [skill, setSkill] = useState("");
+  const [skill, setSkill] = useState<SkillValue | "">("");
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("/img_placeholder.jpg");
   const [fileName, setFileName] = useState<string>("No file chosen");
@@ -35,22 +85,65 @@ export default function NewJobPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const job = await createJob({
+      // Backend expects images as array of strings (URLs), not objects
+      const images = imageDataUrl ? [imageDataUrl] : ["/img_placeholder.jpg"];
+      
+      // Log payload size for debugging (without logging the full base64 string)
+      const payload = {
         title,
         description,
         price,
         address,
         requiredSkill: skill || null,
-        images: [
-          {
-            type: "IMAGE",
-            url: imageDataUrl ?? "/img_placeholder.jpg",
-          },
-        ],
-      });
+        images,
+      };
+      
+      if (imageDataUrl) {
+        const imageSize = imageDataUrl.length;
+        const imageSizeKB = Math.ceil(imageSize / 1024);
+        const imageSizeMB = (imageSizeKB / 1024).toFixed(2);
+        console.log(`Image size: ${imageSizeKB} KB (${imageSizeMB} MB) - base64 string length`);
+        
+        // Increased limit to 15MB to match backend
+        const maxSize = 15 * 1024 * 1024; // 15MB
+        if (imageSize > maxSize) {
+          setError(`Image is too large (${imageSizeMB} MB). Maximum size is 15MB. Please use a smaller image.`);
+          setSubmitting(false);
+          return;
+        }
+      }
+      
+      const job = await createJob(payload);
       router.push(`/jobs/${job.id}`);
     } catch (err) {
-      setError("Failed to create job. Please check inputs and try again.");
+      console.error("Error creating job:", err);
+      
+      // Better error handling
+      let errorMessage = "Failed to create job. Please check inputs and try again.";
+      
+      if (err && typeof err === 'object' && 'status' in err) {
+        const apiError = err as ApiError;
+        errorMessage = apiError.message || errorMessage;
+        
+        // Add more context for specific error codes
+        if (apiError.status === 400) {
+          errorMessage = apiError.message || "Invalid input. Please check all fields and try again.";
+        } else if (apiError.status === 401) {
+          errorMessage = "Please log in to create a job.";
+        } else if (apiError.status === 403) {
+          errorMessage = "Only employers can create jobs.";
+        } else if (apiError.status === 413) {
+          errorMessage = "Image file is too large. Please use a smaller image.";
+        } else if (apiError.status >= 500) {
+          errorMessage = "Server error. Please try again later.";
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message || errorMessage;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -119,19 +212,41 @@ export default function NewJobPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            onChange={(e) => {
+            onChange={async (e) => {
               const file = e.target.files?.[0];
-              if (!file) return;
-              setFileName(file.name);
-              const reader = new FileReader();
-              reader.onload = (ev) => {
-                const result = ev.target?.result;
-                if (typeof result === "string") {
-                  setImageDataUrl(result);
-                  setPreviewUrl(result);
+              if (!file) {
+                setFileName("No file chosen");
+                setImageDataUrl(null);
+                setPreviewUrl("/img_placeholder.jpg");
+                return;
+              }
+
+              // Validate file size
+              if (file.size > MAX_FILE_SIZE) {
+                setError(`File size too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB.`);
+                setFileName("No file chosen");
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
                 }
-              };
-              reader.readAsDataURL(file);
+                return;
+              }
+
+              setFileName(file.name);
+              setError(null);
+
+              try {
+                // Compress and resize image before converting to base64
+                const compressedDataUrl = await compressImage(file);
+                setImageDataUrl(compressedDataUrl);
+                setPreviewUrl(compressedDataUrl);
+              } catch (err) {
+                console.error("Error processing image:", err);
+                setError("Failed to process image. Please try another file.");
+                setFileName("No file chosen");
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+              }
             }}
             className="hidden"
           />
@@ -145,7 +260,7 @@ export default function NewJobPage() {
           <span className="text-xs text-slate-600">{fileName}</span>
         </div>
         <span className="text-xs text-slate-500">
-          Chọn ảnh để tải lên (sẽ nhúng base64 vào payload); nếu không chọn sẽ dùng ảnh placeholder.
+          Chọn ảnh để tải lên (tối đa {MAX_FILE_SIZE / (1024 * 1024)}MB, sẽ tự động nén và resize); nếu không chọn sẽ dùng ảnh placeholder.
         </span>
       </label>
       <div className="flex items-center gap-3">
@@ -163,12 +278,18 @@ export default function NewJobPage() {
 
         <label className="text-sm font-medium text-slate-700">
           Required skill
-          <input
-            type="text"
+          <select
             value={skill}
-            onChange={(e) => setSkill(e.target.value)}
+            onChange={(e) => setSkill(e.target.value as SkillValue | "")}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-          />
+          >
+            <option value="">-- Chọn skill --</option>
+            {SKILLS.map((skillOption) => (
+              <option key={skillOption.value} value={skillOption.value}>
+                {skillOption.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { Job } from "@/lib/types/jobs";
+import { getSkillLabel } from "@/lib/constants/skills";
 
 export function JobCard({ job }: { job: Job }) {
   return (
@@ -36,7 +37,7 @@ export function JobCard({ job }: { job: Job }) {
         </p>
         <p className="text-xs text-slate-500">{job.address}</p>
         <footer className="mt-auto flex items-center justify-between text-xs text-slate-500">
-          <span>{job.requiredSkill ?? "Any skill"}</span>
+          <span>{getSkillLabel(job.requiredSkill)}</span>
         </footer>
       </article>
     </Link>

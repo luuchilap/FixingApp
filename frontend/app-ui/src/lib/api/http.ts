@@ -32,19 +32,59 @@ function getAuthToken(): string | null {
   }
 }
 
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  return headers as Record<string, string>;
+}
+
 async function handleResponse<T>(res: Response): Promise<T> {
   const contentType = res.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
-  const body = isJson ? await res.json() : await res.text();
-
-  if (!res.ok) {
+  let body: any;
+  
+  try {
+    body = isJson ? await res.json() : await res.text();
+  } catch (parseError) {
+    // If parsing fails, use status text as message
     const err: ApiError = {
       status: res.status,
-      message:
-        (isJson && (body.message as string)) ||
-        (typeof body === "string" ? body : "Request failed"),
-      error: isJson ? (body.error as string | undefined) : undefined,
+      message: res.statusText || "Request failed",
+      error: "Failed to parse response",
     };
+    throw err;
+  }
+
+  if (!res.ok) {
+    // Extract error message from various possible formats
+    let errorMessage = "Request failed";
+    
+    if (isJson && body) {
+      // Try different possible message fields
+      errorMessage = body.message || body.error || body.msg || errorMessage;
+      
+      // If message is an object, try to stringify it
+      if (typeof errorMessage === 'object') {
+        errorMessage = JSON.stringify(errorMessage);
+      }
+    } else if (typeof body === "string" && body) {
+      errorMessage = body;
+    } else {
+      errorMessage = res.statusText || `HTTP ${res.status} error`;
+    }
+    
+    const err: ApiError = {
+      status: res.status,
+      message: errorMessage,
+      error: isJson && body ? (body.error as string | undefined) : undefined,
+    };
+    
+    console.error(`API Error [${res.status}]:`, errorMessage, body);
     throw err;
   }
 
@@ -62,8 +102,8 @@ export async function apiGet<T>(
   options: RequestOptions = {},
 ): Promise<T> {
   const { query, auth, init } = options;
-  const headers: HeadersInit = {
-    ...(init?.headers ?? {}),
+  const headers: Record<string, string> = {
+    ...normalizeHeaders(init?.headers),
   };
 
   if (auth) {
@@ -76,7 +116,7 @@ export async function apiGet<T>(
   const res = await fetch(buildUrl(path, query), {
     ...init,
     method: "GET",
-    headers,
+    headers: headers as HeadersInit,
   });
 
   return handleResponse<T>(res);
@@ -88,9 +128,9 @@ export async function apiPost<TReq, TRes>(
   options: Omit<RequestOptions, "query"> = {},
 ): Promise<TRes> {
   const { auth, init } = options;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(init?.headers ?? {}),
+    ...normalizeHeaders(init?.headers),
   };
 
   if (auth) {
@@ -103,7 +143,7 @@ export async function apiPost<TReq, TRes>(
   const res = await fetch(buildUrl(path), {
     ...init,
     method: "POST",
-    headers,
+    headers: headers as HeadersInit,
     body: JSON.stringify(body),
   });
 
@@ -116,9 +156,9 @@ export async function apiPut<TReq, TRes>(
   options: Omit<RequestOptions, "query"> = {},
 ): Promise<TRes> {
   const { auth, init } = options;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(init?.headers ?? {}),
+    ...normalizeHeaders(init?.headers),
   };
 
   if (auth) {
@@ -131,7 +171,7 @@ export async function apiPut<TReq, TRes>(
   const res = await fetch(buildUrl(path), {
     ...init,
     method: "PUT",
-    headers,
+    headers: headers as HeadersInit,
     body: JSON.stringify(body),
   });
 
@@ -143,8 +183,8 @@ export async function apiDelete<TRes>(
   options: Omit<RequestOptions, "query"> = {},
 ): Promise<TRes> {
   const { auth, init } = options;
-  const headers: HeadersInit = {
-    ...(init?.headers ?? {}),
+  const headers: Record<string, string> = {
+    ...normalizeHeaders(init?.headers),
   };
 
   if (auth) {
@@ -157,7 +197,7 @@ export async function apiDelete<TRes>(
   const res = await fetch(buildUrl(path), {
     ...init,
     method: "DELETE",
-    headers,
+    headers: headers as HeadersInit,
   });
 
   return handleResponse<TRes>(res);

@@ -16,6 +16,7 @@ import {
 } from "@/lib/api/employer";
 import { fileComplaint } from "@/lib/api/complaints";
 import type { ApiError } from "@/lib/api/http";
+import { getSkillLabel } from "@/lib/constants/skills";
 
 export default function JobDetailPage() {
   const params = useParams<{ id: string }>();
@@ -148,7 +149,7 @@ export default function JobDetailPage() {
           </p>
           <p>
             <span className="font-medium text-slate-700">Required skill: </span>
-            {job.requiredSkill ?? "Any skill"}
+            {getSkillLabel(job.requiredSkill)}
           </p>
         </div>
 

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchJobs } from "../lib/api/jobs";
 import type { Job } from "../lib/types/jobs";
 import { JobList } from "./components/jobs/JobList";
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -75,5 +75,28 @@ export default function Home() {
         <JobList jobs={jobs} isLoading={isLoading} />
       </section>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 py-8">
+        <section className="rounded-2xl bg-gradient-to-r from-sky-500 to-sky-600 p-8 text-white shadow-sm">
+          <h1 className="text-2xl font-semibold">
+            Find trusted workers and jobs in your area
+          </h1>
+          <p className="mt-2 text-sm text-sky-50">
+            Search by skill, address, or job title. Workers can browse and apply
+            in a few taps.
+          </p>
+        </section>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          Loading...
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
