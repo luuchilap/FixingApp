@@ -151,6 +151,25 @@ export default function JobDetailPage() {
             <span className="font-medium text-slate-700">Required skill: </span>
             {getSkillLabel(job.requiredSkill)}
           </p>
+          {(job.employerName || job.employerPhone) && (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                Người đăng việc
+              </p>
+              {job.employerName && (
+                <p>
+                  <span className="font-medium text-slate-700">Họ tên: </span>
+                  {job.employerName}
+                </p>
+              )}
+              {job.employerPhone && (
+                <p className="mt-1">
+                  <span className="font-medium text-slate-700">Số điện thoại: </span>
+                  {job.employerPhone}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {canWorkerApply && (

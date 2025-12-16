@@ -3,6 +3,8 @@ export type JobStatus = "CHUA_LAM" | "DANG_BAN_GIAO" | "DA_HOAN_THANH" | "EXPIRE
 export interface Job {
   id: number;
   employerId: number;
+  employerName?: string;
+  employerPhone?: string;
   title: string;
   description: string;
   price: number;

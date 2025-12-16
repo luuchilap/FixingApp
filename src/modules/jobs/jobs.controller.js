@@ -223,7 +223,7 @@ function listJobs(req, res, next) {
     const { keyword, category, minPrice, maxPrice } = req.query;
 
     let query = `
-      SELECT j.*, u.full_name as employer_name
+      SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
       FROM jobs j
       JOIN users u ON j.employer_id = u.id
       WHERE j.status != 'DA_XONG'
@@ -263,6 +263,7 @@ function listJobs(req, res, next) {
         id: job.id,
         employerId: job.employer_id,
         employerName: job.employer_name,
+        employerPhone: job.employer_phone,
         title: job.title,
         description: job.description,
         price: job.price,
@@ -635,7 +636,12 @@ function resetJob(req, res, next) {
  * Returns images in format expected by frontend: Array<{ type?: string; url: string }>
  */
 function getJobWithImages(jobId) {
-  const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(jobId);
+  const job = db.prepare(`
+    SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
+    FROM jobs j
+    JOIN users u ON j.employer_id = u.id
+    WHERE j.id = ?
+  `).get(jobId);
   
   if (!job) {
     return null;
@@ -646,6 +652,8 @@ function getJobWithImages(jobId) {
   return {
     id: job.id,
     employerId: job.employer_id,
+    employerName: job.employer_name,
+    employerPhone: job.employer_phone,
     title: job.title,
     description: job.description,
     price: job.price,
