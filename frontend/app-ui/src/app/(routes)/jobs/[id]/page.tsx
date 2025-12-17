@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import type { Job } from "@/lib/types/jobs";
 import type { JobApplication } from "@/lib/types/applications";
@@ -15,11 +15,13 @@ import {
   rejectApplication,
 } from "@/lib/api/employer";
 import { fileComplaint } from "@/lib/api/complaints";
+import { createConversation } from "@/lib/api/chat";
 import type { ApiError } from "@/lib/api/http";
 import { getSkillLabel } from "@/lib/constants/skills";
 
 export default function JobDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const jobId = Number(params.id);
   const { user } = useAuth();
 
@@ -153,9 +155,32 @@ export default function JobDetailPage() {
           </p>
           {(job.employerName || job.employerPhone) && (
             <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                Người đăng việc
-              </p>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Người đăng việc
+                </p>
+                {isWorker && user && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        // Create or get existing conversation (backend handles this)
+                        const conversation = await createConversation({
+                          jobId: jobId,
+                          workerId: user.id,
+                        });
+                        router.push(`/chat/${conversation.id}`);
+                      } catch (err) {
+                        const e = err as ApiError;
+                        setActionMessage(e.message ?? "Không thể tạo cuộc trò chuyện.");
+                      }
+                    }}
+                    className="flex-shrink-0 rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-sky-700"
+                  >
+                    💬 Nhắn tin
+                  </button>
+                )}
+              </div>
               {job.employerName && (
                 <p>
                   <span className="font-medium text-slate-700">Họ tên: </span>

@@ -47,6 +47,7 @@ app.use('/api', require('./modules/reviews/reviews.routes'));
 app.use('/api/complaints', require('./modules/complaints/complaints.routes'));
 app.use('/api/admin', require('./modules/admin/admin.routes'));
 app.use('/api/notifications', require('./modules/notifications/notifications.routes'));
+app.use('/api/conversations', require('./modules/conversations/conversations.routes'));
 // etc.
 
 // 404 handler

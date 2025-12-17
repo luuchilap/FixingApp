@@ -3,12 +3,14 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useChatUnreadCount } from "@/lib/hooks/useChatUnreadCount";
 import { NotificationBell } from "../notifications/NotificationBell";
 
 export function Header() {
   const { user, logout } = useAuth();
   const role = user?.role ?? "GUEST";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const chatUnreadCount = useChatUnreadCount();
 
   return (
     <header className="border-b bg-gradient-to-r from-amber-200 via-yellow-200 to-amber-300 shadow-sm">
@@ -43,6 +45,16 @@ export function Header() {
             {role !== "GUEST" && (
               <Link href="/dashboard" className="hover:text-sky-700">
                 Bảng điều khiển
+              </Link>
+            )}
+            {(role === "EMPLOYER" || role === "WORKER") && (
+              <Link href="/chat" className="relative inline-flex items-center hover:text-sky-700">
+                Chat
+                {chatUnreadCount > 0 && (
+                  <span className="ml-1.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                  </span>
+                )}
               </Link>
             )}
             {role === "EMPLOYER" && (
@@ -175,6 +187,20 @@ export function Header() {
                   >
                     Bảng điều khiển
                   </Link>
+                  {(role === "EMPLOYER" || role === "WORKER") && (
+                    <Link
+                      href="/chat"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="relative rounded-md px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-white/50"
+                    >
+                      Chat
+                      {chatUnreadCount > 0 && (
+                        <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                          {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                   {role === "EMPLOYER" && (
                     <>
                       <Link
