@@ -4,6 +4,7 @@
  */
 
 const db = require('../../config/db');
+const { uploadToS3 } = require('./jobs.utils');
 
 /**
  * Normalize skill value - maps skill values to standardized ones
@@ -61,9 +62,10 @@ function normalizeSkill(skill) {
 /**
  * Create a new job
  */
-function createJob(req, res, next) {
+async function createJob(req, res, next) {
   try {
-    const { title, description, price, address, requiredSkill, images } = req.body;
+    const { title, description, price, address, requiredSkill } = req.body;
+    let { images } = req.body; // Existing URLs if any
     const employerId = req.user.id;
 
     // Validation
@@ -81,52 +83,37 @@ function createJob(req, res, next) {
       });
     }
 
-    // Validate images if provided
-    if (images !== undefined && images !== null) {
-      if (!Array.isArray(images)) {
-        return res.status(400).json({
-          error: 'Invalid images format',
-          message: 'images must be an array of strings (image URLs)'
-        });
-      }
+    // Handle uploaded files from multer
+    const uploadedFiles = req.files || [];
+    const s3ImageUrls = [];
 
-      // Validate each image URL
-      for (let i = 0; i < images.length; i++) {
-        const imageUrl = images[i];
+    if (uploadedFiles.length > 0) {
+      for (const file of uploadedFiles) {
+        const url = await uploadToS3(file);
+        s3ImageUrls.push(url);
+      }
+    }
+
+    // Combine existing URLs and new S3 URLs
+    // If we have S3 URLs, they take priority
+    let finalImages = [];
+    if (s3ImageUrls.length > 0) {
+      finalImages = s3ImageUrls;
+    } else if (images) {
+      // Backward compatibility for base64 or existing URLs
+      finalImages = Array.isArray(images) ? images : [images];
+    }
+
+    // Validate images if provided
+    if (finalImages.length > 0) {
+      // Validate each image URL/data
+      for (let i = 0; i < finalImages.length; i++) {
+        const imageUrl = finalImages[i];
         if (typeof imageUrl !== 'string') {
           return res.status(400).json({
             error: 'Invalid image format',
-            message: `Image at index ${i} must be a string (URL or base64 data URL)`
+            message: `Image at index ${i} must be a string`
           });
-        }
-
-        // Validate base64 data URL format if it's a data URL
-        if (imageUrl.startsWith('data:')) {
-          // Check if it's a valid data URL format: data:[<mediatype>][;base64],<data>
-          if (!imageUrl.match(/^data:image\/[^;]+;base64,/)) {
-            return res.status(400).json({
-              error: 'Invalid image format',
-              message: `Image at index ${i} is not a valid base64 image data URL`
-            });
-          }
-
-          // Check base64 data size
-          // Base64 encoding increases size by ~33%, so we check the string length
-          // For a 10MB original file, base64 would be ~13.3MB, so we allow up to 15MB base64 string
-          const base64Data = imageUrl.split(',')[1];
-          if (base64Data) {
-            const base64SizeKB = Math.ceil(base64Data.length / 1024);
-            const maxSizeKB = 15 * 1024; // 15MB in KB
-            
-            console.log(`Image ${i}: base64 size = ${base64SizeKB}KB (${(base64SizeKB / 1024).toFixed(2)}MB), max = ${maxSizeKB}KB`);
-            
-            if (base64Data.length > maxSizeKB * 1024) {
-              return res.status(400).json({
-                error: 'Image too large',
-                message: `Image at index ${i} is too large. Base64 size: ${(base64SizeKB / 1024).toFixed(2)}MB, maximum allowed: 15MB`
-              });
-            }
-          }
         }
       }
     }
@@ -159,16 +146,14 @@ function createJob(req, res, next) {
       const jobId = jobResult.lastInsertRowid;
 
       // Insert images if provided
-      if (images && Array.isArray(images) && images.length > 0) {
+      if (finalImages.length > 0) {
         const insertImage = db.prepare(`
           INSERT INTO job_images (job_id, image_url, is_primary)
           VALUES (?, ?, ?)
         `);
         
-        images.forEach((imageUrl, index) => {
-          // Ensure imageUrl is a string
-          const url = typeof imageUrl === 'string' ? imageUrl : String(imageUrl);
-          insertImage.run(jobId, url, index === 0 ? 1 : 0);
+        finalImages.forEach((imageUrl, index) => {
+          insertImage.run(jobId, imageUrl, index === 0 ? 1 : 0);
         });
       }
 
@@ -311,10 +296,11 @@ function getMyJobs(req, res, next) {
 /**
  * Update a job
  */
-function updateJob(req, res, next) {
+async function updateJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const { title, description, price, address, requiredSkill } = req.body;
+    let { images } = req.body; // Existing URLs to keep if any
     const employerId = req.user.id;
 
     // Get existing job
@@ -351,6 +337,17 @@ function updateJob(req, res, next) {
       });
     }
 
+    // Handle new uploaded files from multer
+    const uploadedFiles = req.files || [];
+    const s3ImageUrls = [];
+
+    if (uploadedFiles.length > 0) {
+      for (const file of uploadedFiles) {
+        const url = await uploadToS3(file);
+        s3ImageUrls.push(url);
+      }
+    }
+
     // Build update query
     const updates = [];
     const values = [];
@@ -384,25 +381,51 @@ function updateJob(req, res, next) {
       values.push(normalizedSkill);
     }
 
-    if (updates.length === 0) {
-      return res.status(400).json({
-        error: 'No fields to update'
-      });
-    }
-
+    const now = Date.now();
     updates.push('updated_at = ?');
-    values.push(Date.now());
-    values.push(parseInt(jobId));
+    values.push(now);
 
-    // Update job
-    const updateQuery = `UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`;
-    db.prepare(updateQuery).run(...values);
+    // Update job and images in transaction
+    db.transaction(() => {
+      // Update job fields if any
+      if (updates.length > 0) {
+        values.push(parseInt(jobId));
+        const updateQuery = `UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`;
+        db.prepare(updateQuery).run(...values);
+      }
+
+      // Update images if provided or uploaded
+      if (s3ImageUrls.length > 0 || images !== undefined) {
+        // Clear existing images first if we're replacing them
+        // In a real app, you might want to only add new ones or delete specific ones
+        // For MVP, if images or files are provided, we replace all images
+        db.prepare('DELETE FROM job_images WHERE job_id = ?').run(parseInt(jobId));
+
+        const insertImage = db.prepare(`
+          INSERT INTO job_images (job_id, image_url, is_primary)
+          VALUES (?, ?, ?)
+        `);
+
+        // Use new S3 URLs first
+        let finalImages = s3ImageUrls;
+        
+        // If no new files, use existing URLs if provided
+        if (finalImages.length === 0 && images) {
+          finalImages = Array.isArray(images) ? images : [images];
+        }
+
+        finalImages.forEach((imageUrl, index) => {
+          insertImage.run(parseInt(jobId), imageUrl, index === 0 ? 1 : 0);
+        });
+      }
+    })();
 
     // Get updated job
     const updatedJob = getJobWithImages(parseInt(jobId));
 
     res.status(200).json(updatedJob);
   } catch (error) {
+    console.error('Error updating job:', error);
     next(error);
   }
 }

@@ -128,10 +128,14 @@ export async function apiPost<TReq, TRes>(
   options: Omit<RequestOptions, "query"> = {},
 ): Promise<TRes> {
   const { auth, init } = options;
+  const isFormData = body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...normalizeHeaders(init?.headers),
   };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (auth) {
     const token = getAuthToken();
@@ -144,7 +148,7 @@ export async function apiPost<TReq, TRes>(
     ...init,
     method: "POST",
     headers: headers as HeadersInit,
-    body: JSON.stringify(body),
+    body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
   });
 
   return handleResponse<TRes>(res);
@@ -156,10 +160,14 @@ export async function apiPut<TReq, TRes>(
   options: Omit<RequestOptions, "query"> = {},
 ): Promise<TRes> {
   const { auth, init } = options;
+  const isFormData = body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     ...normalizeHeaders(init?.headers),
   };
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (auth) {
     const token = getAuthToken();
@@ -172,7 +180,7 @@ export async function apiPut<TReq, TRes>(
     ...init,
     method: "PUT",
     headers: headers as HeadersInit,
-    body: JSON.stringify(body),
+    body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
   });
 
   return handleResponse<TRes>(res);

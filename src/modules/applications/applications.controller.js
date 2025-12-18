@@ -309,9 +309,51 @@ function rejectWorker(req, res, next) {
   }
 }
 
+/**
+ * Get applications by current worker
+ */
+function getMyApplications(req, res, next) {
+  try {
+    const workerId = req.user.id;
+
+    const applications = db.prepare(`
+      SELECT 
+        ja.*,
+        j.title as job_title,
+        j.status as job_status,
+        j.price as job_price,
+        j.address as job_address
+      FROM job_applications ja
+      JOIN jobs j ON ja.job_id = j.id
+      WHERE ja.worker_id = ?
+      ORDER BY ja.applied_at DESC
+    `).all(workerId);
+
+    const formattedApplications = applications.map(app => ({
+      id: app.id,
+      jobId: app.job_id,
+      workerId: app.worker_id,
+      status: app.status,
+      appliedAt: app.applied_at,
+      job: {
+        id: app.job_id,
+        title: app.job_title,
+        status: app.job_status,
+        price: app.job_price,
+        address: app.job_address
+      }
+    }));
+
+    res.status(200).json(formattedApplications);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   applyToJob,
   getJobApplications,
+  getMyApplications,
   acceptWorker,
   rejectWorker
 };

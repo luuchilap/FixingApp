@@ -10,13 +10,15 @@ const {
   applyToJob,
   getJobApplications,
   acceptWorker,
-  rejectWorker
+  rejectWorker,
+  getMyApplications
 } = require('./applications.controller');
 
 // All routes require authentication
 router.use(authenticateToken);
 
 // Worker routes
+router.get('/my', requireRole('WORKER'), getMyApplications);
 router.post('/:jobId/apply', requireRole('WORKER'), applyToJob);
 
 // Employer routes

@@ -17,6 +17,16 @@ const {
   resetJob
 } = require('./jobs.controller');
 
+const multer = require('multer');
+
+// Configure multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+});
+
 // Public routes
 router.get('/', listJobs);
 router.get('/:jobId/status', getJobStatus); // Public status check (must come before /:jobId)
@@ -31,8 +41,8 @@ router.get('/:jobId', getJobById);
 router.use(authenticateToken);
 
 // Employer-only routes
-router.post('/', requireRole('EMPLOYER'), createJob);
-router.put('/:jobId', requireRole('EMPLOYER'), updateJob);
+router.post('/', requireRole('EMPLOYER'), upload.array('images', 5), createJob);
+router.put('/:jobId', requireRole('EMPLOYER'), upload.array('images', 5), updateJob);
 router.delete('/:jobId', requireRole('EMPLOYER'), deleteJob);
 router.post('/:jobId/complete', requireRole('EMPLOYER'), completeJob);
 router.post('/:jobId/reset', requireRole('EMPLOYER'), resetJob);

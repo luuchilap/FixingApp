@@ -15,8 +15,8 @@ export interface CreateJobRequest {
   images?: string[]; // Backend expects array of image URLs (strings), not objects
 }
 
-export async function createJob(body: CreateJobRequest): Promise<Job> {
-  return apiPost<CreateJobRequest, Job>("/api/jobs", body, { auth: true });
+export async function createJob(body: CreateJobRequest | FormData): Promise<Job> {
+  return apiPost<CreateJobRequest | FormData, Job>("/api/jobs", body, { auth: true });
 }
 
 export async function acceptApplication(
