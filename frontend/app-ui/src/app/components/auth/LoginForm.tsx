@@ -50,6 +50,24 @@ export function LoginForm() {
         Use the phone number and password you registered with.
       </p>
 
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Sample Accounts for Testing
+        </p>
+        <div className="space-y-1.5 text-xs text-slate-600">
+          <div>
+            <span className="font-medium text-slate-700">Employer:</span>{" "}
+            <span className="font-mono">0901234567</span> /{" "}
+            <span className="font-mono">password123</span>
+          </div>
+          <div>
+            <span className="font-medium text-slate-700">Worker:</span>{" "}
+            <span className="font-mono">0913456789</span> /{" "}
+            <span className="font-mono">password123</span>
+          </div>
+        </div>
+      </div>
+
       <label className="text-sm font-medium text-slate-700">
         Phone
         <input
