@@ -7,7 +7,7 @@ import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
-import { colors, spacing, typography, borderRadius } from '../constants/designTokens';
+import { colors, spacing, typography } from '../constants/designTokens';
 
 export type MainTabsParamList = {
   Dashboard: undefined;

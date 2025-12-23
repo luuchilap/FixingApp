@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { JobCard } from '../../components/jobs/JobCard';
+import { JobFilters, JobFilters as JobFiltersType } from '../../components/jobs/JobFilters';
 import { Job } from '../../types/jobs';
 import { listJobs, getMyJobs } from '../../services/jobsApi';
 import { colors, spacing, typography } from '../../constants/designTokens';
@@ -27,6 +28,7 @@ export const JobsListScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<JobFiltersType>({});
 
   const loadJobs = useCallback(async () => {
     try {
@@ -34,11 +36,36 @@ export const JobsListScreen: React.FC = () => {
       let jobsData: Job[];
 
       if (user?.role === 'EMPLOYER') {
-        // Employers see their own jobs
-        jobsData = await getMyJobs();
+        // Employers see their own jobs with filters
+        // Note: getMyJobs doesn't support filters, so we'll filter client-side
+        const allJobs = await getMyJobs();
+        // Apply client-side filtering for employers
+        jobsData = allJobs.filter((job) => {
+          if (filters.keyword) {
+            const keyword = filters.keyword.toLowerCase();
+            const matchesKeyword = 
+              job.title.toLowerCase().includes(keyword) ||
+              job.description.toLowerCase().includes(keyword);
+            if (!matchesKeyword) return false;
+          }
+          if (filters.category && job.requiredSkill !== filters.category) {
+            return false;
+          }
+          if (filters.minPrice && job.price < filters.minPrice) {
+            return false;
+          }
+          if (filters.maxPrice && job.price > filters.maxPrice) {
+            return false;
+          }
+          return true;
+        });
       } else {
-        // Workers see all available jobs
-        jobsData = await listJobs({ status: 'CHUA_LAM' });
+        // Workers see all available jobs with filters
+        const params: Parameters<typeof listJobs>[0] = {
+          status: 'CHUA_LAM',
+          ...filters,
+        };
+        jobsData = await listJobs(params);
       }
 
       setJobs(jobsData);
@@ -50,7 +77,7 @@ export const JobsListScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.role]);
+  }, [user?.role, filters]);
 
   useEffect(() => {
     loadJobs();
@@ -106,6 +133,14 @@ export const JobsListScreen: React.FC = () => {
     navigation.navigate('CreateJob');
   };
 
+  const handleFilterChange = (newFilters: JobFiltersType) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({});
+  };
+
   return (
     <View style={styles.container}>
       {user?.role === 'EMPLOYER' && (
@@ -118,6 +153,14 @@ export const JobsListScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       )}
+      
+      {/* Filter Form - Always visible like web */}
+      <JobFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onClear={handleClearFilters}
+      />
+
       <FlatList
         data={jobs}
         renderItem={renderJobItem}

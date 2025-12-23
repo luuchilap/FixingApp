@@ -3,50 +3,241 @@
     "tasks": [
       {
         "id": "1",
-        "title": "Setup Project Structure",
-        "description": "Initialize the Next.js project with TypeScript and TailwindCSS.",
-        "details": "Create a new Next.js project using TypeScript. Install TailwindCSS and configure it for styling. Set up the basic project structure with folders for components, pages, and API clients.",
-        "testStrategy": "Verify that the project builds successfully and the TailwindCSS styles are applied correctly.",
+        "title": "Project Setup",
+        "description": "Initialize the React Native project using Expo and set up the development environment.",
+        "details": "1. Initialize a new Expo project with TypeScript.\n2. Set up the folder structure as per the PRD.\n3. Configure Babel, tsconfig, and app.json.\n4. Install core dependencies including navigation, storage, and axios.",
+        "testStrategy": "Verify the project runs successfully on both Android and iOS emulators.",
         "priority": "medium",
         "dependencies": [],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Initialize Next.js Project with TypeScript",
-            "description": "Create a new Next.js project using TypeScript.",
+            "title": "Initialize Expo Project with TypeScript",
+            "description": "Create a new Expo project using TypeScript template.",
             "dependencies": [],
-            "details": "Use the Next.js CLI to create a new project. Ensure TypeScript is selected during setup.",
+            "details": "Use the Expo CLI to initialize a new project with TypeScript support.",
             "status": "done",
-            "testStrategy": "Verify the project builds successfully with TypeScript.",
-            "updatedAt": "2025-12-16T08:34:48.492Z",
-            "parentId": "undefined"
+            "testStrategy": "Run the project to ensure it starts without errors.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T01:40:54.758Z"
           },
           {
             "id": 2,
-            "title": "Install and Configure TailwindCSS",
-            "description": "Set up TailwindCSS for styling in the Next.js project.",
+            "title": "Set Up Folder Structure",
+            "description": "Organize the project folders according to the PRD specifications.",
             "dependencies": [
               1
             ],
-            "details": "Install TailwindCSS via npm. Configure the TailwindCSS configuration file and integrate it with the Next.js project.",
+            "details": "Create directories for components, screens, assets, and utils as outlined in the PRD.",
             "status": "done",
-            "testStrategy": "Check that TailwindCSS styles are applied correctly to a sample component.",
+            "testStrategy": "Verify the folder structure matches the PRD.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:34:48.494Z"
+            "updatedAt": "2025-12-23T03:02:18.386Z"
+          },
+          {
+            "id": 3,
+            "title": "Configure Babel and TypeScript",
+            "description": "Set up Babel and TypeScript configurations for the project.",
+            "dependencies": [
+              1
+            ],
+            "details": "Edit babel.config.js and tsconfig.json to include necessary presets and paths.",
+            "status": "done",
+            "testStrategy": "Ensure the project compiles without TypeScript or Babel errors.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:02:18.388Z"
+          },
+          {
+            "id": 4,
+            "title": "Configure app.json",
+            "description": "Set up app.json with project-specific settings.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update app.json with the app name, slug, and other configurations as required.",
+            "status": "done",
+            "testStrategy": "Check that the app.json settings are correctly applied by running the app.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:02:18.390Z"
+          },
+          {
+            "id": 5,
+            "title": "Install Core Dependencies",
+            "description": "Install essential libraries such as navigation, storage, and axios.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use npm or yarn to install React Navigation, AsyncStorage, and axios.",
+            "status": "done",
+            "testStrategy": "Verify that all dependencies are installed and can be imported without errors.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:02:18.392Z"
           }
         ],
-        "complexity": 4,
-        "recommendedSubtasks": 2,
-        "expansionPrompt": "Break down the setup process into subtasks for initializing the Next.js project, configuring TypeScript, and setting up TailwindCSS.",
-        "updatedAt": "2025-12-16T08:34:48.494Z"
+        "updatedAt": "2025-12-23T03:02:18.392Z"
       },
       {
         "id": "2",
-        "title": "Implement Global Layout & Navigation",
-        "description": "Create a persistent header and footer with navigation links.",
-        "details": "Develop the header component with links to home, job search, job posting, dashboard, and notifications. Implement role-based navigation using a mock user session. Add a footer with support links and app promotion.",
-        "testStrategy": "Check that navigation links route correctly and adapt based on user role (guest, employer, worker, admin).",
+        "title": "Implement Authentication System",
+        "description": "Develop the authentication system using JWT for Employer and Worker roles.",
+        "details": "1. Create AuthContext using React Context API.\n2. Implement login and registration screens for Employer and Worker.\n3. Use AsyncStorage to persist JWT tokens.\n4. Set up axios interceptors for automatic token injection.",
+        "testStrategy": "Test login and registration flows for both roles and ensure tokens are stored and retrieved correctly.",
+        "priority": "medium",
+        "dependencies": [
+          "1"
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create AuthContext using React Context API",
+            "description": "Develop the AuthContext to manage authentication state using React Context API.",
+            "dependencies": [],
+            "details": "Set up a new context for authentication, providing state and dispatch functions to manage login status and user roles.",
+            "status": "done",
+            "testStrategy": "Ensure context provides correct state and updates on login/logout.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:09:34.796Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement Login and Registration Screens",
+            "description": "Develop login and registration screens for both Employer and Worker roles.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create separate components for login and registration, ensuring form validation and error handling are implemented.",
+            "status": "done",
+            "testStrategy": "Test form submission and validation for both roles.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:11:28.496Z"
+          },
+          {
+            "id": 3,
+            "title": "Persist JWT Tokens Using AsyncStorage",
+            "description": "Use AsyncStorage to store and retrieve JWT tokens securely.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement functions to save and retrieve JWT tokens from AsyncStorage, ensuring secure storage practices.",
+            "status": "done",
+            "testStrategy": "Verify tokens are stored and retrieved correctly after login.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:09:43.845Z"
+          },
+          {
+            "id": 4,
+            "title": "Set Up Axios Interceptors for Token Injection",
+            "description": "Configure axios interceptors to automatically inject JWT tokens into requests.",
+            "dependencies": [
+              3
+            ],
+            "details": "Modify axios instance to include interceptors that attach JWT tokens to outgoing requests, handling token refresh if needed.",
+            "status": "done",
+            "testStrategy": "Check that requests include tokens and handle token expiration gracefully.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:09:43.848Z"
+          },
+          {
+            "id": 5,
+            "title": "Test Authentication Flows",
+            "description": "Conduct comprehensive testing of login and registration flows for both roles.",
+            "dependencies": [
+              4
+            ],
+            "details": "Perform end-to-end testing of authentication processes, ensuring all components work together seamlessly.",
+            "status": "pending",
+            "testStrategy": "Test login, registration, token storage, and API requests for both Employer and Worker roles.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-23T03:11:28.496Z"
+      },
+      {
+        "id": "3",
+        "title": "Set Up Navigation Structure",
+        "description": "Configure navigation using React Navigation for authentication and main app flows.",
+        "details": "1. Set up Stack Navigator for authentication and main app flows.\n2. Implement Bottom Tab Navigator for main features.\n3. Ensure role-based tab visibility for Employer and Worker.",
+        "testStrategy": "Verify navigation flows between authentication and main app screens, ensuring correct tab visibility based on user role.",
+        "priority": "medium",
+        "dependencies": [
+          "2"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Stack Navigator for Authentication",
+            "description": "Configure a Stack Navigator to manage authentication flows.",
+            "dependencies": [],
+            "details": "Implement a Stack Navigator to handle login and registration screens for both Employer and Worker roles.",
+            "status": "pending",
+            "testStrategy": "Verify navigation between login and registration screens.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:20:59.868Z"
+          },
+          {
+            "id": 2,
+            "title": "Set Up Stack Navigator for Main App Flows",
+            "description": "Configure a Stack Navigator for the main application screens.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement a Stack Navigator to manage transitions between main app screens after authentication.",
+            "status": "pending",
+            "testStrategy": "Ensure smooth navigation between main app screens.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:20:59.876Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement Bottom Tab Navigator for Main Features",
+            "description": "Create a Bottom Tab Navigator for the main features of the app.",
+            "dependencies": [
+              2
+            ],
+            "details": "Set up a Bottom Tab Navigator to allow users to switch between main features like Dashboard, Jobs, and Profile.",
+            "status": "pending",
+            "testStrategy": "Test tab switching functionality and ensure correct screen rendering.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:20:59.877Z"
+          },
+          {
+            "id": 4,
+            "title": "Configure Role-Based Tab Visibility",
+            "description": "Ensure that tabs are visible based on user roles (Employer or Worker).",
+            "dependencies": [
+              3
+            ],
+            "details": "Implement logic to show or hide tabs in the Bottom Tab Navigator based on the user's role.",
+            "status": "pending",
+            "testStrategy": "Verify that tabs are correctly shown or hidden for each user role.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:20:59.878Z"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Navigation with Authentication Context",
+            "description": "Connect navigation structure with authentication context to manage user sessions.",
+            "dependencies": [
+              4
+            ],
+            "details": "Use React Context API to integrate navigation with authentication state, ensuring users are directed to the correct screens based on their authentication status.",
+            "status": "pending",
+            "testStrategy": "Test navigation flows to ensure users are redirected appropriately based on authentication state.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T03:20:59.896Z"
+          }
+        ],
+        "updatedAt": "2025-12-23T03:20:59.896Z"
+      },
+      {
+        "id": "4",
+        "title": "Develop Core UI Components",
+        "description": "Create reusable UI components matching the web app design.",
+        "details": "1. Develop Button, Input, and Card components with consistent styling.\n2. Use design tokens for colors, spacing, and typography.\n3. Ensure components visually match the web app.",
+        "testStrategy": "Visually inspect components to ensure they match the web app design and test their functionality.",
         "priority": "medium",
         "dependencies": [
           "1"
@@ -55,488 +246,478 @@
         "subtasks": [
           {
             "id": 1,
-            "title": "Develop Header Component with Navigation Links",
-            "description": "Create a header component with navigation links to key sections.",
+            "title": "Develop Button Component",
+            "description": "Create a reusable Button component with consistent styling.",
             "dependencies": [],
-            "details": "Implement a header with links to home, job search, job posting, dashboard, and notifications. Ensure the header is responsive and accessible.",
+            "details": "Implement the Button component using design tokens for colors, spacing, and typography. Ensure it matches the web app design.",
             "status": "done",
-            "testStrategy": "Verify all links route correctly and the header is responsive.",
+            "testStrategy": "Visually inspect the Button component and test click functionality.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:39:38.148Z"
+            "updatedAt": "2025-12-23T04:56:22.680Z"
           },
           {
             "id": 2,
-            "title": "Implement Role-Based Navigation Logic",
-            "description": "Develop logic for role-based navigation using a mock user session.",
-            "dependencies": [
-              1
-            ],
-            "details": "Use a mock user session to display different navigation options based on user roles such as guest, employer, worker, and admin.",
+            "title": "Develop Input Component",
+            "description": "Create a reusable Input component with consistent styling.",
+            "dependencies": [],
+            "details": "Implement the Input component using design tokens for colors, spacing, and typography. Ensure it matches the web app design.",
             "status": "done",
-            "testStrategy": "Test navigation options for each user role to ensure correct links are displayed.",
+            "testStrategy": "Visually inspect the Input component and test input functionality.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:39:38.149Z"
+            "updatedAt": "2025-12-23T04:56:22.686Z"
           },
           {
             "id": 3,
-            "title": "Create Footer with Support and Promotion Links",
-            "description": "Design and implement a footer with support and app promotion links.",
+            "title": "Develop Card Component",
+            "description": "Create a reusable Card component with consistent styling.",
             "dependencies": [],
-            "details": "Add a footer component with links to support resources and app promotion. Ensure it is consistent with the overall design.",
+            "details": "Implement the Card component using design tokens for colors, spacing, and typography. Ensure it matches the web app design.",
             "status": "done",
-            "testStrategy": "Check that all footer links are functional and the design is consistent with the header.",
+            "testStrategy": "Visually inspect the Card component and test display functionality.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:39:38.150Z"
+            "updatedAt": "2025-12-23T04:56:22.686Z"
+          },
+          {
+            "id": 4,
+            "title": "Integrate Design Tokens",
+            "description": "Integrate design tokens for colors, spacing, and typography across components.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Ensure all components use the same design tokens for consistent styling across the application.",
+            "status": "done",
+            "testStrategy": "Check that all components use the correct design tokens and maintain visual consistency.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T04:56:22.696Z"
+          },
+          {
+            "id": 5,
+            "title": "Visual Consistency Check",
+            "description": "Ensure all components visually match the web app design.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Perform a final review to ensure all components are visually consistent with the web app design.",
+            "status": "done",
+            "testStrategy": "Conduct a comprehensive visual inspection of all components against the design specifications.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T04:56:29.999Z"
           }
         ],
-        "complexity": 5,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Divide the task into subtasks for header development, footer development, and role-based navigation logic.",
-        "updatedAt": "2025-12-16T08:39:38.150Z"
+        "updatedAt": "2025-12-23T04:56:29.999Z"
       },
       {
-        "id": "3",
-        "title": "Develop Authentication & User Management",
-        "description": "Implement registration, login, and profile management.",
-        "details": "Create registration forms for employers and workers. Implement login functionality. Use localStorage to store JWT tokens. Develop profile management to update user details.",
-        "testStrategy": "Test registration and login flows for both roles. Ensure tokens are stored and used in API requests. Verify profile updates reflect correctly.",
+        "id": "5",
+        "title": "Implement Jobs List and Detail Screens",
+        "description": "Develop screens to display and interact with job listings.",
+        "details": "1. Create JobsListScreen using FlatList to display jobs.\n2. Develop JobCard component with matching design.\n3. Implement JobDetailScreen with full job information.\n4. Integrate API calls to fetch job data.",
+        "testStrategy": "Test job listing and detail views for correct data display and UI consistency.",
         "priority": "medium",
         "dependencies": [
-          "1",
+          "3",
+          "4"
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create JobsListScreen with FlatList",
+            "description": "Develop the JobsListScreen using FlatList to display a list of job postings.",
+            "dependencies": [],
+            "details": "Use React Native's FlatList component to render job items efficiently. Ensure the list is scrollable and supports pagination if necessary.",
+            "status": "done",
+            "testStrategy": "Verify that the list displays all job items correctly and supports scrolling.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:00:44.140Z"
+          },
+          {
+            "id": 2,
+            "title": "Develop JobCard Component",
+            "description": "Create a reusable JobCard component to display individual job details in the list.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design the JobCard to match the provided UI specifications. Include job title, company name, and a brief description.",
+            "status": "done",
+            "testStrategy": "Check that each JobCard displays the correct job information and matches the design specs.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:00:44.141Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement JobDetailScreen",
+            "description": "Develop the JobDetailScreen to show full job information when a job is selected.",
+            "dependencies": [
+              2
+            ],
+            "details": "Create a detailed view for each job, including all relevant information such as job description, requirements, and application details.",
+            "status": "done",
+            "testStrategy": "Ensure that selecting a job from the list navigates to the detail screen and displays all job information accurately.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:00:44.142Z"
+          },
+          {
+            "id": 4,
+            "title": "Integrate API Calls for Job Data",
+            "description": "Set up API calls to fetch job data for the list and detail screens.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Use a suitable library like axios to fetch job data from the backend. Implement error handling and loading states.",
+            "status": "done",
+            "testStrategy": "Test API integration to ensure data is fetched and displayed correctly, handling errors gracefully.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:00:44.143Z"
+          },
+          {
+            "id": 5,
+            "title": "Test Job Listing and Detail Views",
+            "description": "Conduct comprehensive testing of the job listing and detail views for data accuracy and UI consistency.",
+            "dependencies": [
+              4
+            ],
+            "details": "Perform both manual and automated testing to verify that job data is displayed correctly and the UI is consistent with the design.",
+            "status": "pending",
+            "testStrategy": "Use test cases to validate data accuracy and UI consistency across different devices and screen sizes.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-23T05:00:44.143Z"
+      },
+      {
+        "id": "6",
+        "title": "Implement Job Creation Feature",
+        "description": "Enable Employers to create job postings with full details.",
+        "details": "1. Develop CreateJobScreen with form inputs for job details.\n2. Integrate image picker for job images.\n3. Use FormData for API uploads.\n4. Implement form validation and error handling.",
+        "testStrategy": "Test job creation flow, including image uploads and form validation.",
+        "priority": "medium",
+        "dependencies": [
+          "5"
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Develop CreateJobScreen UI",
+            "description": "Design and implement the CreateJobScreen with form inputs for job details.",
+            "dependencies": [],
+            "details": "Use React Native components to create a form with fields for job title, description, salary, and location.",
+            "status": "done",
+            "testStrategy": "Verify UI elements are correctly displayed and functional.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:03:59.313Z"
+          },
+          {
+            "id": 2,
+            "title": "Integrate Image Picker",
+            "description": "Add functionality to allow employers to upload images for job postings.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use a library like React Native Image Picker to enable image selection and preview within the form.",
+            "status": "done",
+            "testStrategy": "Test image selection and ensure images are displayed correctly in the form.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:03:59.315Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement FormData for API Uploads",
+            "description": "Set up FormData to handle job posting data and images for API submission.",
+            "dependencies": [
+              2
+            ],
+            "details": "Configure FormData to include all form fields and selected images, and ensure correct API endpoint is used.",
+            "status": "done",
+            "testStrategy": "Test API calls to ensure data and images are uploaded successfully.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:03:59.322Z"
+          },
+          {
+            "id": 4,
+            "title": "Implement Form Validation and Error Handling",
+            "description": "Add validation rules and error handling for job posting form inputs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use libraries like Yup and Formik to validate inputs and display error messages for invalid entries.",
+            "status": "done",
+            "testStrategy": "Test form submission with valid and invalid data to ensure proper validation and error messages.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:03:59.323Z"
+          },
+          {
+            "id": 5,
+            "title": "Test Job Creation Flow",
+            "description": "Conduct end-to-end testing of the job creation process, including image uploads and form validation.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Perform comprehensive testing to ensure all components work together seamlessly and meet requirements.",
+            "status": "pending",
+            "testStrategy": "Execute test cases covering all aspects of job creation, including edge cases and error scenarios.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-23T05:03:59.323Z"
+      },
+      {
+        "id": "7",
+        "title": "Develop Applications Feature",
+        "description": "Allow Workers to apply for jobs and Employers to manage applications.",
+        "details": "1. Create ApplicationsScreen to view job applications.\n2. Develop ApplicationCard component.\n3. Implement apply to job functionality for Workers.\n4. Allow Employers to accept or reject applications.",
+        "testStrategy": "Test application submission and management flows for both Workers and Employers.",
+        "priority": "medium",
+        "dependencies": [
+          "6"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ApplicationsScreen Component",
+            "description": "Develop the ApplicationsScreen to display job applications for both Workers and Employers.",
+            "dependencies": [],
+            "details": "Use React Native to create a screen that lists all job applications. Ensure it integrates with the backend to fetch application data.",
+            "status": "done",
+            "testStrategy": "Test if the screen displays applications correctly for both roles.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:10:33.136Z"
+          },
+          {
+            "id": 2,
+            "title": "Develop ApplicationCard Component",
+            "description": "Build a reusable ApplicationCard component to display individual job application details.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design the ApplicationCard to include job title, applicant name, and status. Ensure it is reusable across different screens.",
+            "status": "done",
+            "testStrategy": "Verify the component displays all necessary details and is reusable.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:10:33.137Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement Apply to Job Functionality",
+            "description": "Enable Workers to apply for jobs through the application interface.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create a form that allows Workers to submit applications. Integrate with the backend to handle submissions.",
+            "status": "done",
+            "testStrategy": "Test the application submission process to ensure data is sent and stored correctly.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:10:33.138Z"
+          },
+          {
+            "id": 4,
+            "title": "Develop Application Management for Employers",
+            "description": "Allow Employers to accept or reject job applications.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Add functionality for Employers to change the status of applications. Update the backend to reflect these changes.",
+            "status": "done",
+            "testStrategy": "Test the acceptance and rejection process to ensure status updates are saved.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:10:33.143Z"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Application Features with Backend",
+            "description": "Ensure all application features are connected to the backend services.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Use API endpoints to fetch, submit, and update application data. Ensure secure data handling.",
+            "status": "done",
+            "testStrategy": "Test end-to-end application flows for both Workers and Employers.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:10:33.144Z"
+          }
+        ],
+        "updatedAt": "2025-12-23T05:10:33.144Z"
+      },
+      {
+        "id": "8",
+        "title": "Develop Profile Screen",
+        "description": "Create a screen for users to view and update their profiles.",
+        "details": "1. Develop ProfileScreen to display user information.\n2. Implement functionality to update profile details.\n3. Add logout functionality.",
+        "testStrategy": "Test profile view and update functionality, ensuring data is correctly saved and displayed.",
+        "priority": "medium",
+        "dependencies": [
           "2"
         ],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Develop Registration Forms for Employers and Workers",
-            "description": "Create separate registration forms for employers and workers.",
+            "title": "Design Profile Screen Layout",
+            "description": "Create the UI layout for the Profile Screen.",
             "dependencies": [],
-            "details": "Design and implement registration forms with necessary fields for both employers and workers. Ensure form validation and error handling are in place.",
+            "details": "Use existing UI components to design the layout for displaying user information.",
             "status": "done",
-            "testStrategy": "Test form submission and validation for both roles.",
+            "testStrategy": "Visually inspect the layout to ensure it matches design specifications.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:45:39.098Z"
+            "updatedAt": "2025-12-23T05:14:16.749Z"
           },
           {
             "id": 2,
-            "title": "Implement Login Functionality",
-            "description": "Develop the login feature for users to access their accounts.",
+            "title": "Implement User Information Display",
+            "description": "Develop functionality to display user information on the Profile Screen.",
             "dependencies": [
               1
             ],
-            "details": "Create a login form and integrate it with the backend API to authenticate users. Ensure error messages are displayed for failed logins.",
+            "details": "Fetch user data from the server and display it using the designed layout.",
             "status": "done",
-            "testStrategy": "Test login flow with valid and invalid credentials.",
+            "testStrategy": "Verify that user information is correctly fetched and displayed.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:45:39.099Z"
+            "updatedAt": "2025-12-23T05:14:16.758Z"
           },
           {
             "id": 3,
-            "title": "Manage JWT Tokens with localStorage",
-            "description": "Implement JWT token storage and retrieval using localStorage.",
+            "title": "Develop Profile Update Functionality",
+            "description": "Implement the ability for users to update their profile details.",
             "dependencies": [
               2
             ],
-            "details": "Store JWT tokens in localStorage upon successful login and retrieve them for authenticated API requests. Ensure tokens are cleared on logout.",
+            "details": "Create forms and logic to update user details and send updates to the server.",
             "status": "done",
-            "testStrategy": "Verify tokens are stored and retrieved correctly. Test token clearance on logout.",
+            "testStrategy": "Test the update process to ensure changes are saved and reflected.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:45:39.100Z"
+            "updatedAt": "2025-12-23T05:14:16.758Z"
           },
           {
             "id": 4,
-            "title": "Develop Profile Management for User Details",
-            "description": "Create functionality for users to update their profile information.",
+            "title": "Add Logout Functionality",
+            "description": "Implement a logout feature on the Profile Screen.",
             "dependencies": [
               2
             ],
-            "details": "Implement a profile management page where users can update their personal details. Integrate with the backend to save changes.",
+            "details": "Provide a button to log out, clearing user data and redirecting to the login screen.",
             "status": "done",
-            "testStrategy": "Test profile updates for accuracy and persistence.",
+            "testStrategy": "Ensure the logout process clears data and redirects correctly.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:45:39.101Z"
-          }
-        ],
-        "complexity": 8,
-        "recommendedSubtasks": 4,
-        "expansionPrompt": "Create subtasks for registration form development, login functionality, JWT token management, and profile management.",
-        "updatedAt": "2025-12-16T08:45:39.101Z"
-      },
-      {
-        "id": "4",
-        "title": "Implement Job Discovery & Search",
-        "description": "Enable job search and filtering for workers and guests.",
-        "details": "Develop the home page with a search bar. Implement job listing with filters for skill, location, and price. Use the API to fetch and display job data.",
-        "testStrategy": "Test search functionality with various filters. Ensure job listings update correctly based on search criteria.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "3"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Develop Search Bar on Home Page",
-            "description": "Create a search bar on the home page for job discovery.",
-            "dependencies": [],
-            "details": "Implement a search bar allowing users to input keywords and initiate a job search. Ensure the design aligns with the existing home page layout.",
-            "status": "done",
-            "testStrategy": "Test search bar input and submission functionality.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:57:48.932Z"
+            "updatedAt": "2025-12-23T05:14:16.759Z"
           },
           {
-            "id": 2,
-            "title": "Implement Job Listing with Filters",
-            "description": "Develop job listing with filters for skill, location, and price.",
-            "dependencies": [
-              1
-            ],
-            "details": "Create a job listing section that displays jobs based on search criteria. Implement filters for skill, location, and price to refine search results.",
-            "status": "done",
-            "testStrategy": "Verify that filters correctly narrow down job listings based on user input.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:57:48.935Z"
-          },
-          {
-            "id": 3,
-            "title": "Integrate API for Job Data Fetching",
-            "description": "Use the API to fetch and display job data on the home page.",
+            "id": 5,
+            "title": "Integrate Profile Screen with Navigation",
+            "description": "Connect the Profile Screen to the app's navigation system.",
             "dependencies": [
               1,
-              2
+              2,
+              3,
+              4
             ],
-            "details": "Integrate with the backend API to retrieve job data. Ensure data is displayed correctly in the job listing section and updates dynamically based on search and filter criteria.",
+            "details": "Ensure the Profile Screen is accessible from the main navigation and returns correctly.",
             "status": "done",
-            "testStrategy": "Test API integration to ensure job data is fetched and displayed correctly.",
+            "testStrategy": "Test navigation to and from the Profile Screen to ensure smooth transitions.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T08:57:48.936Z"
+            "updatedAt": "2025-12-23T05:14:16.770Z"
           }
         ],
-        "complexity": 7,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Break down into subtasks for search bar implementation, job listing with filters, and API integration for data fetching.",
-        "updatedAt": "2025-12-16T08:57:48.936Z"
+        "updatedAt": "2025-12-23T05:14:16.770Z"
       },
       {
-        "id": "5",
-        "title": "Create Job Detail & Application Management",
-        "description": "Develop job detail page and application actions for workers and employers.",
-        "details": "Build the job detail page to display job information. Implement application actions for workers to apply and employers to manage applications. Handle business rule errors gracefully.",
-        "testStrategy": "Verify job details display correctly. Test application actions and ensure error messages are clear and accurate.",
+        "id": "9",
+        "title": "Implement Chat/Messaging Feature",
+        "description": "Enable real-time messaging between Employers and Workers.",
+        "details": "1. Develop ChatListScreen to display conversations.\n2. Implement ChatScreen for message exchange.\n3. Set up real-time updates using polling or WebSocket.\n4. Track unread message counts.",
+        "testStrategy": "Test messaging functionality for real-time updates and correct unread message tracking.",
         "priority": "medium",
         "dependencies": [
-          "4"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Develop Job Detail Page",
-            "description": "Create a page to display detailed job information.",
-            "dependencies": [],
-            "details": "Design and implement the job detail page layout. Ensure all job information is displayed clearly. Integrate with the backend to fetch job data.",
-            "status": "done",
-            "testStrategy": "Verify that all job details are displayed correctly and data is fetched from the backend.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:05:39.700Z"
-          },
-          {
-            "id": 2,
-            "title": "Implement Application Actions for Workers",
-            "description": "Enable workers to apply for jobs and manage their applications.",
-            "dependencies": [
-              1
-            ],
-            "details": "Develop the application form for workers. Implement functionality to submit applications and track their status. Handle form validation and error messages.",
-            "status": "done",
-            "testStrategy": "Test the application submission process and ensure error messages are displayed for invalid inputs.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:05:39.701Z"
-          },
-          {
-            "id": 3,
-            "title": "Develop Application Management for Employers",
-            "description": "Create features for employers to manage job applications.",
-            "dependencies": [
-              1
-            ],
-            "details": "Implement functionality for employers to view, accept, or reject applications. Ensure actions are logged and notifications are sent to workers.",
-            "status": "done",
-            "testStrategy": "Verify that employers can manage applications and that actions trigger appropriate notifications.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:05:39.702Z"
-          }
-        ],
-        "complexity": 6,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Divide into subtasks for job detail page development, application actions for workers, and application management for employers.",
-        "updatedAt": "2025-12-16T09:05:39.702Z"
-      },
-      {
-        "id": "6",
-        "title": "Develop Worker Dashboard & Experience",
-        "description": "Create a dashboard for workers to manage applications and view reviews.",
-        "details": "Implement the worker dashboard to show applied jobs and reviews. Integrate certificate status and upload functionality. Display average ratings and reviews.",
-        "testStrategy": "Test dashboard functionality for displaying applications and reviews. Verify certificate upload and status updates.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "5"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Design Dashboard UI Layout",
-            "description": "Create the user interface layout for the worker dashboard.",
-            "dependencies": [],
-            "details": "Design the layout using Figma, focusing on user experience and accessibility. Ensure the layout accommodates all necessary components like job applications, reviews, and certificates.",
-            "status": "done",
-            "testStrategy": "Review design with stakeholders and conduct usability testing.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:14:15.621Z"
-          },
-          {
-            "id": 2,
-            "title": "Implement Application Management Feature",
-            "description": "Develop functionality to manage job applications within the dashboard.",
-            "dependencies": [
-              1
-            ],
-            "details": "Use React to build components for viewing and managing job applications. Integrate with the backend API to fetch and update application data.",
-            "status": "done",
-            "testStrategy": "Test application management features with mock data and API integration.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:14:15.622Z"
-          },
-          {
-            "id": 3,
-            "title": "Develop Review Display Component",
-            "description": "Create components to display reviews and ratings on the dashboard.",
-            "dependencies": [
-              1
-            ],
-            "details": "Build React components to show average ratings and individual reviews. Ensure data is fetched from the API and displayed correctly.",
-            "status": "done",
-            "testStrategy": "Verify reviews are displayed accurately and update dynamically.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:14:15.623Z"
-          },
-          {
-            "id": 4,
-            "title": "Integrate Certificate Status and Upload",
-            "description": "Add functionality for certificate status display and upload.",
-            "dependencies": [
-              1,
-              2
-            ],
-            "details": "Implement a section for workers to view and upload certificates. Ensure secure file handling and status updates via the API.",
-            "status": "done",
-            "testStrategy": "Test certificate upload and status update processes for accuracy and security.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:14:15.624Z"
-          }
-        ],
-        "complexity": 7,
-        "recommendedSubtasks": 4,
-        "expansionPrompt": "Create subtasks for dashboard UI development, application management, review display, and certificate integration.",
-        "updatedAt": "2025-12-16T09:14:15.624Z"
-      },
-      {
-        "id": "7",
-        "title": "Develop Employer Dashboard & Job Posting",
-        "description": "Create a dashboard for employers to post and manage jobs.",
-        "details": "Implement the employer dashboard to list job postings. Develop job posting form and integrate with the API. Allow employers to manage job applications and status.",
-        "testStrategy": "Verify job posting and management features. Ensure applications can be accepted or rejected correctly.",
-        "priority": "medium",
-        "dependencies": [
-          "3",
-          "5"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Design Employer Dashboard UI",
-            "description": "Create the user interface for the employer dashboard.",
-            "dependencies": [],
-            "details": "Design the layout and components for the employer dashboard using TailwindCSS. Ensure it is responsive and user-friendly.",
-            "status": "done",
-            "testStrategy": "Verify UI elements render correctly on various devices.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:21:22.142Z"
-          },
-          {
-            "id": 2,
-            "title": "Develop Job Posting Form",
-            "description": "Implement the form for employers to post new jobs.",
-            "dependencies": [
-              1
-            ],
-            "details": "Create a form with fields for job title, description, requirements, and salary. Validate inputs and ensure accessibility.",
-            "status": "done",
-            "testStrategy": "Test form validation and submission process.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:21:22.144Z"
-          },
-          {
-            "id": 3,
-            "title": "Integrate API for Job Posting",
-            "description": "Connect the job posting form to the backend API.",
-            "dependencies": [
-              2
-            ],
-            "details": "Use Axios to send job data to the API. Handle responses and display success or error messages.",
-            "status": "done",
-            "testStrategy": "Ensure API requests are successful and errors are handled.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:21:22.146Z"
-          },
-          {
-            "id": 4,
-            "title": "Implement Application Management Features",
-            "description": "Develop features for employers to manage job applications.",
-            "dependencies": [
-              1,
-              3
-            ],
-            "details": "Allow employers to view, accept, or reject applications. Update application status in the database.",
-            "status": "done",
-            "testStrategy": "Verify application actions update status correctly.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:21:22.153Z"
-          }
-        ],
-        "complexity": 7,
-        "recommendedSubtasks": 4,
-        "expansionPrompt": "Break down into subtasks for dashboard UI, job posting form, API integration, and application management features.",
-        "updatedAt": "2025-12-16T09:21:22.153Z"
-      },
-      {
-        "id": "8",
-        "title": "Implement Complaints & Admin Resolution",
-        "description": "Enable complaint filing and resolution by admins.",
-        "details": "Develop complaint filing from job detail pages. Create admin dashboard for resolving complaints. Integrate with the notifications system for updates.",
-        "testStrategy": "Test complaint filing and ensure admin resolution updates are reflected in the UI.",
-        "priority": "medium",
-        "dependencies": [
-          "6",
           "7"
         ],
         "status": "done",
         "subtasks": [
           {
             "id": 1,
-            "title": "Develop Complaint Filing Feature",
-            "description": "Create a feature for users to file complaints from job detail pages.",
+            "title": "Develop ChatListScreen",
+            "description": "Create a screen to display a list of conversations between users.",
             "dependencies": [],
-            "details": "Implement a form on job detail pages allowing users to submit complaints. Ensure data validation and secure submission to the backend.",
+            "details": "Use React Native to design and implement the ChatListScreen. Ensure it fetches and displays conversation previews.",
             "status": "done",
-            "testStrategy": "Test form submission and data validation.",
+            "testStrategy": "Verify that the screen displays all conversations correctly.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:27:02.534Z"
+            "updatedAt": "2025-12-23T05:18:01.787Z"
           },
           {
             "id": 2,
-            "title": "Create Admin Dashboard for Complaint Resolution",
-            "description": "Develop an admin dashboard to manage and resolve user complaints.",
+            "title": "Implement ChatScreen for Message Exchange",
+            "description": "Develop a screen for users to send and receive messages in real-time.",
             "dependencies": [
               1
             ],
-            "details": "Design and implement a dashboard interface for admins to view, manage, and resolve complaints. Include filtering and sorting options.",
+            "details": "Design the ChatScreen using React Native. Implement message input and display areas.",
             "status": "done",
-            "testStrategy": "Verify admin actions update complaint status correctly.",
+            "testStrategy": "Test sending and receiving messages between users.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:27:02.535Z"
+            "updatedAt": "2025-12-23T05:18:01.792Z"
           },
           {
             "id": 3,
-            "title": "Integrate Notifications for Complaint Updates",
-            "description": "Integrate the notifications system to alert users about complaint updates.",
+            "title": "Set Up Real-Time Updates",
+            "description": "Enable real-time messaging using WebSocket or polling.",
+            "dependencies": [
+              2
+            ],
+            "details": "Integrate WebSocket for real-time updates or implement polling as a fallback.",
+            "status": "done",
+            "testStrategy": "Ensure messages appear in real-time without manual refresh.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:18:01.795Z"
+          },
+          {
+            "id": 4,
+            "title": "Track Unread Message Counts",
+            "description": "Implement a system to track and display unread message counts for users.",
             "dependencies": [
               1,
               2
             ],
-            "details": "Connect the complaint system with the notifications API to send updates to users when their complaints are resolved or updated.",
+            "details": "Store unread message counts in the database and update them as messages are read.",
             "status": "done",
-            "testStrategy": "Ensure notifications are sent and displayed for complaint updates.",
+            "testStrategy": "Verify that unread counts update correctly when messages are read.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:27:02.535Z"
-          }
-        ],
-        "complexity": 6,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Divide into subtasks for complaint filing, admin dashboard development, and notification integration.",
-        "updatedAt": "2025-12-16T09:27:02.535Z"
-      },
-      {
-        "id": "9",
-        "title": "Implement Notifications System",
-        "description": "Develop a notification center for user updates.",
-        "details": "Create a notification bell in the header. Develop a notifications page to list and manage notifications. Implement API integration for fetching and marking notifications as read.",
-        "testStrategy": "Verify notifications are fetched and displayed correctly. Test marking notifications as read and badge updates.",
-        "priority": "medium",
-        "dependencies": [
-          "2",
-          "8"
-        ],
-        "status": "done",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Develop Notification UI Components",
-            "description": "Create the notification bell and notifications page UI.",
-            "dependencies": [
-              2
-            ],
-            "details": "Design and implement a notification bell icon in the header. Develop a notifications page to list all user notifications with options to mark them as read.",
-            "status": "done",
-            "testStrategy": "Verify UI elements are displayed correctly and interact as expected.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:34:01.660Z"
+            "updatedAt": "2025-12-23T05:18:01.796Z"
           },
           {
-            "id": 2,
-            "title": "Implement API Integration for Notifications",
-            "description": "Develop API integration for fetching and updating notifications.",
-            "dependencies": [
-              1
-            ],
-            "details": "Set up API calls to fetch notifications from the server. Implement functionality to mark notifications as read and update the notification bell badge accordingly.",
-            "status": "done",
-            "testStrategy": "Test API calls for fetching and updating notifications. Ensure data is correctly reflected in the UI.",
-            "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:34:01.661Z"
-          },
-          {
-            "id": 3,
-            "title": "Develop Notification Management Logic",
-            "description": "Implement logic for managing notifications within the application.",
+            "id": 5,
+            "title": "Integrate Messaging with Backend",
+            "description": "Connect the chat feature with the backend to handle data storage and retrieval.",
             "dependencies": [
               1,
-              2
+              2,
+              3,
+              4
             ],
-            "details": "Create logic to handle notification data, including storing, updating, and removing notifications as needed. Ensure seamless integration with the UI components.",
+            "details": "Ensure the frontend communicates with the backend API for sending and receiving messages.",
             "status": "done",
-            "testStrategy": "Test notification management logic to ensure data consistency and correct UI updates.",
+            "testStrategy": "Test the integration by sending messages and checking database updates.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:34:01.662Z"
+            "updatedAt": "2025-12-23T05:18:01.798Z"
           }
         ],
-        "complexity": 6,
-        "recommendedSubtasks": 3,
-        "expansionPrompt": "Create subtasks for notification UI development, API integration, and notification management logic.",
-        "updatedAt": "2025-12-16T09:34:01.662Z"
+        "updatedAt": "2025-12-23T05:18:01.798Z"
       },
       {
         "id": "10",
-        "title": "System Tasks & Health Monitoring",
-        "description": "Implement system-driven changes and health checks.",
-        "details": "Display job status updates based on system tasks. Develop a health check page using the API to show backend status.",
-        "testStrategy": "Ensure system-driven status changes are reflected in the UI. Verify health check page displays accurate backend status.",
+        "title": "Implement Notifications",
+        "description": "Set up push notifications for job updates, messages, and applications.",
+        "details": "1. Integrate Expo Notifications or Firebase Cloud Messaging.\n2. Implement notification handling for job updates and messages.\n3. Manage notification badges and alerts.",
+        "testStrategy": "Test push notifications for different events and ensure they are received and displayed correctly.",
         "priority": "medium",
         "dependencies": [
           "9"
@@ -545,38 +726,78 @@
         "subtasks": [
           {
             "id": 1,
-            "title": "Integrate System Task Status Updates",
-            "description": "Develop functionality to display job status updates based on system tasks.",
+            "title": "Integrate Notification Service",
+            "description": "Integrate Expo Notifications or Firebase Cloud Messaging into the app.",
             "dependencies": [],
-            "details": "Use the existing API to fetch system task statuses and display them in the UI. Ensure the updates are real-time and reflect any changes in the backend.",
+            "details": "Choose between Expo Notifications or Firebase Cloud Messaging and integrate it into the app to handle push notifications.",
             "status": "done",
-            "testStrategy": "Verify that system task status updates are displayed correctly and in real-time.",
+            "testStrategy": "Verify integration by sending test notifications.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:35:59.570Z"
+            "updatedAt": "2025-12-23T05:23:34.427Z"
           },
           {
             "id": 2,
-            "title": "Develop Health Check Page",
-            "description": "Create a health check page to display backend status using the API.",
-            "dependencies": [],
-            "details": "Design and implement a page that uses the API to fetch and display the current status of backend services. Include indicators for service health and uptime.",
+            "title": "Implement Job Update Notifications",
+            "description": "Set up push notifications for job updates.",
+            "dependencies": [
+              1
+            ],
+            "details": "Develop functionality to send and receive notifications for job updates, ensuring users are alerted to changes.",
             "status": "done",
-            "testStrategy": "Ensure the health check page accurately reflects the status of backend services and updates in real-time.",
+            "testStrategy": "Test by updating a job and checking if notifications are received.",
             "parentId": "undefined",
-            "updatedAt": "2025-12-16T09:35:59.571Z"
+            "updatedAt": "2025-12-23T05:23:34.428Z"
+          },
+          {
+            "id": 3,
+            "title": "Implement Message Notifications",
+            "description": "Set up push notifications for new messages.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create a system to notify users of new messages in real-time, using the integrated notification service.",
+            "status": "done",
+            "testStrategy": "Send a message and verify the notification is received.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:23:34.431Z"
+          },
+          {
+            "id": 4,
+            "title": "Manage Notification Badges",
+            "description": "Implement badge management for notifications.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Develop logic to update app icon badges based on unread notifications and messages.",
+            "status": "done",
+            "testStrategy": "Test badge updates by sending multiple notifications and checking badge counts.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:23:34.431Z"
+          },
+          {
+            "id": 5,
+            "title": "Handle Notification Alerts",
+            "description": "Implement in-app alerts for notifications.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Create in-app alerts to display notifications when the app is open, ensuring users are aware of new updates.",
+            "status": "done",
+            "testStrategy": "Test in-app alerts by triggering notifications while the app is open.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-23T05:23:34.432Z"
           }
         ],
-        "complexity": 5,
-        "recommendedSubtasks": 2,
-        "expansionPrompt": "Break down into subtasks for system task integration and health check page development.",
-        "updatedAt": "2025-12-16T09:35:59.571Z"
+        "updatedAt": "2025-12-23T05:23:34.432Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-16T09:35:59.572Z",
+      "lastModified": "2025-12-23T05:23:34.439Z",
       "taskCount": 10,
-      "completedCount": 10,
+      "completedCount": 6,
       "tags": [
         "master"
       ]

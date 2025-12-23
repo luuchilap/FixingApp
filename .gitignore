@@ -43,3 +43,6 @@ build/
 # Temporary files
 tmp/
 temp/
+
+# Reference projects
+01-fe-react-native-todo/

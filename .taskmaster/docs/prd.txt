@@ -1,0 +1,973 @@
+<context>
+# Overview  
+FixingApp Mobile là ứng dụng React Native kết nối với backend API hiện có, cho phép người dùng quản lý công việc sửa chữa và dịch vụ trên thiết bị di động. Ứng dụng giải quyết vấn đề kết nối giữa người thuê (Employer) và người làm việc (Worker) trong lĩnh vực sửa chữa, cung cấp nền tảng di động để đăng tin, tìm kiếm công việc, quản lý ứng tuyển, và giao tiếp trực tiếp.
+
+Ứng dụng có giá trị vì:
+- Mang lại trải nghiệm di động thuận tiện cho cả Employer và Worker
+- Tận dụng backend API đã có sẵn, giảm thiểu công việc phát triển backend
+- Hỗ trợ đầy đủ các tính năng core: đăng việc, ứng tuyển, chat, quản lý chứng chỉ
+- Tương thích với Android Studio và có thể mở rộng cho iOS
+- **UI/UX đồng nhất với website React.js**: Đảm bảo trải nghiệm nhất quán giữa web và mobile, giúp users dễ dàng chuyển đổi giữa các platforms
+
+## Design Consistency với Web App
+
+Mobile app sẽ được thiết kế để **đồng nhất tối đa** với website React.js hiện có về:
+- **Color Scheme**: Sử dụng cùng color palette (sky-500/600/700 cho primary, slate cho text/backgrounds, yellow-400 cho skill tags)
+- **Typography**: Font sizes, weights, và line heights tương tự
+- **Component Design**: JobCard, buttons, inputs, forms có cùng visual style
+- **Spacing & Layout**: Padding, margins, gaps tương tự
+- **Border Radius**: Rounded corners (rounded-xl, rounded-full, rounded-md) giống web
+- **Shadows & Effects**: Shadow-sm, shadow-md, hover effects tương tự
+- **Interaction Patterns**: Focus states, hover states, transitions giống web
+
+Mục tiêu: User có thể nhận ra ngay đây là cùng một ứng dụng FixingApp khi chuyển từ web sang mobile.
+
+# Core Features  
+
+## 1. Authentication & User Management
+- **Đăng ký/Đăng nhập**: Hỗ trợ 2 loại tài khoản (Employer và Worker) với xác thực JWT
+- **Quản lý Profile**: Cập nhật thông tin cá nhân, địa chỉ
+- **Tại sao quan trọng**: Foundation cho tất cả tính năng khác, đảm bảo bảo mật và phân quyền
+- **Cách hoạt động**: Sử dụng Context API để quản lý auth state, AsyncStorage để persist token, axios interceptors để tự động thêm token vào requests
+
+## 2. Job Management (Employer)
+- **Đăng tin công việc**: Tạo job với title, description, price, address, required skill, và upload images
+- **Quản lý jobs**: Xem danh sách jobs đã đăng, cập nhật, xóa, đánh dấu hoàn thành
+- **Quản lý ứng viên**: Xem danh sách applications, chấp nhận/từ chối worker
+- **Tại sao quan trọng**: Core feature cho Employer để tìm và quản lý workers
+- **Cách hoạt động**: Form với validation, upload images qua FormData, API calls với error handling
+
+## 3. Job Discovery & Application (Worker)
+- **Tìm kiếm công việc**: Browse danh sách jobs với filter theo skill, price range
+- **Xem chi tiết job**: Thông tin đầy đủ về job, employer, images
+- **Ứng tuyển**: Apply vào job với một click
+- **Quản lý applications**: Xem trạng thái applications (pending, accepted, rejected)
+- **Tại sao quan trọng**: Core feature cho Worker để tìm việc và theo dõi ứng tuyển
+- **Cách hoạt động**: FlatList với pull-to-refresh, navigation đến detail screen, API integration
+
+## 4. Chat/Messaging
+- **Tin nhắn**: Worker và Employer có thể chat trực tiếp về job
+- **Danh sách conversations**: Xem tất cả cuộc trò chuyện
+- **Unread notifications**: Badge hiển thị số tin nhắn chưa đọc
+- **Tại sao quan trọng**: Cải thiện communication giữa Employer và Worker
+- **Cách hoạt động**: Real-time messaging (có thể dùng polling hoặc WebSocket), unread count tracking
+
+## 5. Certificates Management (Worker)
+- **Upload chứng chỉ**: Worker upload certificates để chứng minh kỹ năng
+- **Xem trạng thái**: Theo dõi certificates đang pending, approved, rejected
+- **Tại sao quan trọng**: Giúp Worker thể hiện credentials, Employer đánh giá được năng lực
+- **Cách hoạt động**: Image picker, FormData upload, status tracking
+
+## 6. Reviews & Ratings
+- **Đánh giá**: Employer đánh giá Worker sau khi job hoàn thành
+- **Xem reviews**: Worker xem tất cả reviews của mình
+- **Tại sao quan trọng**: Build trust và reputation system
+- **Cách hoạt động**: Rating form, display reviews list
+
+## 7. Notifications
+- **Push notifications**: Thông báo về applications, messages, job updates
+- **Tại sao quan trọng**: Giữ user engaged và informed
+- **Cách hoạt động**: Expo Notifications hoặc Firebase Cloud Messaging
+
+# User Experience  
+
+## User Personas
+
+### Employer (Người thuê)
+- **Mục tiêu**: Tìm worker phù hợp để hoàn thành công việc sửa chữa
+- **Pain points**: Khó tìm worker có kỹ năng phù hợp, không biết cách đánh giá chất lượng
+- **Needs**: Dễ dàng đăng job, xem applications, chat với workers, đánh giá sau khi hoàn thành
+
+### Worker (Người làm việc)
+- **Mục tiêu**: Tìm công việc phù hợp với kỹ năng và kiếm thu nhập
+- **Pain points**: Khó tìm job phù hợp, không có cách thể hiện credentials
+- **Needs**: Browse jobs dễ dàng, apply nhanh, quản lý applications, upload certificates, xem reviews
+
+## Key User Flows
+
+### Flow 1: Employer đăng job và nhận ứng tuyển
+1. Login/Register as Employer
+2. Navigate to "Đăng việc" tab
+3. Fill form: title, description, price, address, skill, upload images
+4. Submit job
+5. Navigate to "Việc của tôi" để xem job
+6. Xem applications trong job detail
+7. Accept/Reject applications
+8. Chat với accepted worker
+9. Mark job as completed và đánh giá worker
+
+### Flow 2: Worker tìm việc và ứng tuyển
+1. Login/Register as Worker
+2. Browse jobs trong "Tìm việc" tab
+3. Filter theo skill hoặc price
+4. Click vào job để xem chi tiết
+5. Click "Ứng tuyển"
+6. Navigate to "Ứng tuyển" tab để xem trạng thái
+7. Nếu được accept, chat với employer
+8. Hoàn thành job và nhận đánh giá
+
+### Flow 3: Chat giữa Employer và Worker
+1. Từ job detail, click "Nhắn tin" (Worker) hoặc từ applications list (Employer)
+2. Tạo hoặc mở conversation
+3. Gửi và nhận messages
+4. Unread count hiển thị trong header
+
+## UI/UX Considerations
+
+### Design Consistency với Web App
+- **Visual Identity**: Giữ nguyên brand colors, typography, và component styles từ web
+- **Component Parity**: JobCard, buttons, inputs, forms phải trông giống hệt web version
+- **Layout Patterns**: Spacing, padding, margins match với web design
+- **Color Usage**: 
+  - Primary: sky-500/600/700 (buttons, links, highlights)
+  - Text: slate-900 (headings), slate-700 (body), slate-600 (secondary)
+  - Backgrounds: white (cards), slate-50 (page background)
+  - Accents: yellow-400 (skill tags), sky-100 (price badges)
+- **Border Radius**: rounded-xl (cards), rounded-full (buttons, badges), rounded-md (inputs)
+- **Shadows**: shadow-sm (default), shadow-md (hover/elevated)
+- **Focus States**: sky-500 border với ring-1 ring-sky-500
+
+### Mobile-Specific Considerations
+- **Navigation**: Bottom tabs cho main features, stack navigation cho detail screens
+- **Touch Targets**: Minimum 44x44pt cho buttons và interactive elements
+- **Loading states**: Skeleton loaders hoặc spinners khi fetch data (style giống web)
+- **Error handling**: User-friendly error messages với retry options (design giống web)
+- **Pull-to-refresh**: Implement trên tất cả list screens
+- **Image optimization**: Lazy loading, caching cho images từ S3
+- **Offline support**: (Optional) Cache data để xem khi offline
+- **Accessibility**: Proper labels, touch targets đủ lớn
+- **Responsive design**: Support nhiều screen sizes, portrait và landscape (nếu cần)
+
+### Design System Implementation
+- Tạo design tokens file (colors.ts, spacing.ts, typography.ts) match với web
+- Reuse component structure và naming conventions từ web
+- Document design decisions để maintain consistency
+
+</context>
+<PRD>
+# Technical Architecture  
+
+## System Components
+
+### Frontend Architecture (React Native)
+```
+┌─────────────────────────────────────┐
+│         React Native App            │
+├─────────────────────────────────────┤
+│  Navigation Layer                   │
+│  - @react-navigation/native          │
+│  - Stack Navigator (Auth/Main)       │
+│  - Bottom Tab Navigator              │
+├─────────────────────────────────────┤
+│  State Management                    │
+│  - React Context API (Auth, Jobs)    │
+│  - AsyncStorage (persistence)        │
+├─────────────────────────────────────┤
+│  API Layer                           │
+│  - Axios client với interceptors     │
+│  - Auto token injection              │
+│  - Error handling                    │
+├─────────────────────────────────────┤
+│  Storage Layer                       │
+│  - AsyncStorage (token, user data)   │
+│  - Image caching (optional)          │
+├─────────────────────────────────────┤
+│  UI Components                       │
+│  - Custom components (Button, Input) │
+│  - JobCard, ApplicationCard, etc.    │
+└─────────────────────────────────────┘
+           │
+           ▼
+┌─────────────────────────────────────┐
+│      Backend REST API (Express)      │
+│  - Authentication (JWT)              │
+│  - Jobs CRUD                         │
+│  - Applications                      │
+│  - Chat/Conversations                │
+│  - Certificates                      │
+│  - Reviews                           │
+└─────────────────────────────────────┘
+```
+
+### Tech Stack
+
+**Core Framework:**
+- React Native 0.74.3 (via Expo SDK 51.0.20)
+- React 18.2.0
+- TypeScript 5.3.3
+
+**Navigation:**
+- @react-navigation/native
+- @react-navigation/stack
+- @react-navigation/bottom-tabs
+
+**State Management:**
+- React Context API
+- @react-native-async-storage/async-storage
+
+**HTTP Client:**
+- axios với interceptors
+
+**Styling & Design System:**
+- StyleSheet (React Native) với design tokens
+- Design tokens file (colors, spacing, typography) match với web Tailwind CSS
+- Component library với styles đồng nhất với web components
+
+**Forms:**
+- react-hook-form (optional)
+
+**Image Handling:**
+- expo-image-picker
+- Image component với S3 URLs
+
+**Notifications:**
+- expo-notifications
+
+**Testing:**
+- Jest
+- React Native Testing Library
+
+### Design System Architecture
+
+**Design Tokens (src/constants/design.ts):**
+```typescript
+export const Colors = {
+  primary: {
+    500: '#0ea5e9', // sky-500
+    600: '#0284c7', // sky-600
+    700: '#0369a1', // sky-700
+    100: '#e0f2fe', // sky-100
+  },
+  slate: {
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    600: '#475569',
+    700: '#334155',
+    900: '#0f172a',
+  },
+  yellow: {
+    400: '#facc15', // yellow-400
+  },
+  white: '#ffffff',
+};
+
+export const Spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  '2xl': 32,
+};
+
+export const BorderRadius = {
+  sm: 6, // rounded-md
+  md: 8, // rounded-lg
+  lg: 12, // rounded-xl
+  full: 9999, // rounded-full
+};
+
+export const Typography = {
+  xs: { fontSize: 12, lineHeight: 16 },
+  sm: { fontSize: 14, lineHeight: 20 },
+  base: { fontSize: 16, lineHeight: 24 },
+  lg: { fontSize: 18, lineHeight: 28 },
+  xl: { fontSize: 20, lineHeight: 28 },
+  '2xl': { fontSize: 24, lineHeight: 32 },
+};
+```
+
+**Component Style Mapping:**
+- Web Tailwind classes → React Native StyleSheet objects
+- Maintain same visual appearance và interaction patterns
+- Document mapping để ensure consistency
+
+## Data Models
+
+### Auth Models
+```typescript
+interface AuthUser {
+  id: number;
+  phone: string;
+  fullName: string;
+  role: 'EMPLOYER' | 'WORKER' | 'ADMIN';
+  address?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+```
+
+### Job Models
+```typescript
+interface Job {
+  id: number;
+  employerId: number;
+  employerName?: string;
+  employerPhone?: string;
+  title: string;
+  description: string;
+  price: number;
+  address: string;
+  requiredSkill?: string;
+  status: 'CHUA_LAM' | 'DANG_BAN_GIAO' | 'DA_HOAN_THANH' | 'EXPIRED';
+  acceptedWorkerId?: number;
+  createdAt: number;
+  updatedAt: number;
+  images?: Array<{ url: string }>;
+}
+```
+
+### Application Models
+```typescript
+interface JobApplication {
+  id: number;
+  jobId: number;
+  workerId: number;
+  workerName?: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  appliedAt: number;
+}
+```
+
+### Chat Models
+```typescript
+interface Conversation {
+  id: number;
+  jobId: number;
+  employerId: number;
+  workerId: number;
+  employerUnreadCount: number;
+  workerUnreadCount: number;
+  lastMessage?: string;
+  lastMessageAt?: number;
+}
+
+interface Message {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  content: string;
+  createdAt: number;
+}
+```
+
+## APIs and Integrations
+
+### Backend API Endpoints
+
+**Authentication:**
+- POST `/api/auth/login` - Login
+- POST `/api/auth/register-employer` - Register Employer
+- POST `/api/auth/register-worker` - Register Worker
+- POST `/api/auth/logout` - Logout
+- GET `/api/users/me` - Get current user
+
+**Jobs:**
+- GET `/api/jobs` - List jobs (with filters)
+- GET `/api/jobs/my` - Get my jobs (Employer)
+- GET `/api/jobs/:id` - Get job detail
+- POST `/api/jobs` - Create job (with FormData for images)
+- PUT `/api/jobs/:id` - Update job
+- DELETE `/api/jobs/:id` - Delete job
+- POST `/api/jobs/:id/complete` - Complete job
+
+**Applications:**
+- POST `/api/jobs/:id/apply` - Apply to job (Worker)
+- GET `/api/applications/my` - Get my applications (Worker)
+- GET `/api/jobs/:id/applications` - Get job applications (Employer)
+- POST `/api/jobs/:id/accept/:workerId` - Accept application
+- POST `/api/jobs/:id/reject/:workerId` - Reject application
+
+**Chat:**
+- GET `/api/conversations` - List conversations
+- GET `/api/conversations/:id` - Get conversation with messages
+- POST `/api/conversations` - Create conversation
+- POST `/api/conversations/:id/messages` - Send message
+- GET `/api/conversations/unread/total` - Get total unread count
+
+**Certificates:**
+- GET `/api/certificates` - Get my certificates (Worker)
+- POST `/api/certificates` - Upload certificate (FormData)
+
+**Reviews:**
+- GET `/api/reviews/my` - Get my reviews (Worker)
+- POST `/api/jobs/:id/reviews` - Create review (Employer)
+
+### API Client Implementation
+
+**HTTP Client với Interceptors:**
+- Auto-inject JWT token từ AsyncStorage
+- Handle 401 errors (auto logout)
+- Support FormData cho file uploads
+- Error handling và retry logic
+
+## Infrastructure Requirements
+
+### Development Environment
+- **Node.js**: LTS version (16.x trở lên)
+- **Android Studio**: Latest với Android SDK Platform 33+
+- **Expo CLI**: Global installation (optional)
+- **Java**: JDK 17 hoặc 11 (cho Android build)
+
+### Environment Variables
+- `API_BASE_URL`: Backend API URL
+  - Development: `http://localhost:3000` hoặc `http://10.0.2.2:3000` (Android Emulator)
+  - Production: Production API URL
+
+### Android Studio Configuration
+- Android SDK Platform 33+
+- Android SDK Build-Tools
+- Android Virtual Device (AVD) với API Level 33+
+- ANDROID_HOME environment variable
+
+### Build & Deployment
+- **Development**: Expo Go app hoặc development build
+- **Production**: EAS Build (Expo) hoặc native build
+- **Distribution**: 
+  - Android: APK (preview) hoặc AAB (Play Store)
+  - iOS: IPA (App Store)
+
+# Development Roadmap  
+
+## Phase 1: Foundation & MVP (Core Features)
+
+### 1.1 Project Setup
+- Initialize Expo project với TypeScript
+- Setup folder structure
+- Configure babel, tsconfig, app.json
+- Setup environment variables
+- Install core dependencies (navigation, storage, axios)
+
+### 1.2 Authentication System
+- Implement AuthContext với AsyncStorage
+- Create HTTP client với interceptors
+- Build LoginScreen
+- Build RegisterEmployerScreen
+- Build RegisterWorkerScreen
+- Implement navigation guards (Auth vs Main)
+
+### 1.3 Navigation Structure
+- Setup AppNavigator (Stack)
+- Setup AuthNavigator (Stack)
+- Setup TabNavigator (Bottom tabs)
+- Role-based tab visibility (Employer vs Worker)
+
+### 1.4 Core UI Components (Design-matched với Web)
+- **Button component**: 
+  - Primary: bg-sky-600, hover:bg-sky-700, rounded-full, shadow-sm
+  - Secondary: bg-slate-900, hover:bg-slate-950
+  - Outline: border, transparent background
+  - Match exact colors, spacing, typography từ web
+- **Input component**: 
+  - Border: slate-300, focus: sky-500 với ring-1
+  - Rounded-md, shadow-sm, padding match web
+- **LoadingScreen component**: Style consistent với web loading states
+- **ErrorMessage component**: Design match web error messages
+- **Card component**: 
+  - Rounded-xl, border slate-200, shadow-sm
+  - Hover effects (border-sky-300, shadow-md) - adapt cho mobile touch
+  - Padding và spacing match JobCard từ web
+
+### 1.5 Jobs Feature (Basic) - Design-matched với Web
+- **JobsListScreen** với FlatList
+- **JobCard component**: 
+  - Exact visual match với web JobCard
+  - Rounded-xl, border slate-200, shadow-sm
+  - Image: h-44 (web) → height: 176 (RN)
+  - Status badge: rounded-full, bg-white/90, slate-700 text
+  - Skill tag: rounded-full, bg-yellow-400, slate-800 text
+  - Price badge: rounded-lg, bg-sky-100, sky-700 text
+  - Typography, spacing, colors match 100% với web
+- **JobDetailScreen**: Layout và styling match web job detail page
+- **API integration** (getJobs, getJob)
+- **Pull-to-refresh**: Style consistent với web
+
+### 1.6 Job Creation (Employer) - Design-matched với Web
+- **CreateJobScreen** với form:
+  - Input styling match web form inputs
+  - Border slate-300, focus sky-500 với ring
+  - Rounded-md, shadow-sm
+  - Button: rounded-full, bg-sky-600, match web submit button
+- **Image picker integration**
+- **FormData upload**
+- **API integration** (createJob)
+- **Validation**: Error messages style match web
+
+### 1.7 Applications Feature
+- ApplicationsScreen
+- ApplicationCard component
+- Apply to job functionality
+- View applications (Worker)
+- View job applications (Employer)
+- Accept/Reject applications (Employer)
+
+### 1.8 Profile Screen
+- Display user info
+- Update profile functionality
+- Logout functionality
+
+**MVP Goal**: Employer có thể đăng job, Worker có thể tìm và apply, Employer có thể accept/reject applications. Basic flow hoạt động end-to-end.
+
+## Phase 2: Enhanced Features
+
+### 2.1 Job Management Enhancements
+- Update job functionality
+- Delete job functionality
+- Complete job functionality
+- Filter jobs (by skill, price range)
+- Search jobs (by keyword)
+
+### 2.2 Chat/Messaging
+- ChatListScreen
+- ChatScreen với message list
+- Send message functionality
+- Unread count tracking
+- Badge trong header
+- Real-time updates (polling hoặc WebSocket)
+
+### 2.3 Certificates (Worker)
+- CertificatesScreen
+- Upload certificate với image picker
+- View certificate status
+- Display certificates trong profile
+
+### 2.4 Reviews & Ratings
+- ReviewScreen (Employer: create review)
+- ReviewsListScreen (Worker: view reviews)
+- Rating component
+- Display average rating
+
+## Phase 3: Polish & Optimization
+
+### 3.1 Error Handling
+- Comprehensive error handling
+- Retry logic cho failed requests
+- Network error detection
+- User-friendly error messages
+
+### 3.2 Loading States
+- Skeleton loaders
+- Loading indicators
+- Optimistic updates
+
+### 3.3 Performance
+- Image caching
+- List pagination (nếu cần)
+- Memoization cho expensive computations
+- FlatList optimization
+
+### 3.4 UX Improvements
+- Pull-to-refresh trên tất cả lists
+- Empty states
+- Success/error toasts
+- Keyboard handling improvements
+
+## Phase 4: Advanced Features (Future)
+
+### 4.1 Notifications
+- Push notifications setup
+- Notification handling
+- Badge management
+
+### 4.2 Offline Support
+- Data caching
+- Offline mode detection
+- Sync when online
+
+### 4.3 Advanced Search & Filters
+- Location-based search (nếu backend hỗ trợ)
+- Advanced filters
+- Saved searches
+
+### 4.4 Admin Features
+- Admin dashboard
+- Certificate approval/rejection
+- Complaint handling
+
+## Phase 5: Testing & Deployment
+
+### 5.1 Testing
+- Unit tests cho API clients
+- Component tests
+- Integration tests
+- E2E tests (optional)
+
+### 5.2 Build & Deployment
+- Setup EAS Build
+- Build Android APK/AAB
+- Build iOS IPA
+- App Store/Play Store submission
+- CI/CD pipeline (optional)
+
+# Logical Dependency Chain
+
+## Foundation Layer (Build First)
+
+1. **Project Setup** → Must be done first
+   - Dependencies: None
+   - Output: Working Expo project, có thể run trên emulator
+
+2. **HTTP Client & API Layer** → Build early, used everywhere
+   - Dependencies: Project setup
+   - Output: apiClient với interceptors, API modules (auth, jobs, applications)
+
+3. **Authentication System** → Critical foundation
+   - Dependencies: HTTP client, AsyncStorage
+   - Output: AuthContext, login/register screens, token management
+
+4. **Navigation Structure** → Needed for all screens
+   - Dependencies: Authentication
+   - Output: AppNavigator, AuthNavigator, TabNavigator
+
+5. **Core UI Components** → Reusable across app
+   - Dependencies: None (can build in parallel)
+   - Output: Button, Input, Loading, ErrorMessage components
+
+## Core Features Layer (Build for MVP)
+
+6. **Jobs List & Detail** → First visible feature
+   - Dependencies: Navigation, API layer, Core components
+   - Output: JobsListScreen, JobCard, JobDetailScreen
+   - **Priority**: High - Gives immediate visual feedback
+
+7. **Job Creation** → Core Employer feature
+   - Dependencies: Jobs API, Image picker, Form components
+   - Output: CreateJobScreen với full form
+   - **Priority**: High - Core Employer workflow
+
+8. **Applications Feature** → Core interaction
+   - Dependencies: Jobs feature, API layer
+   - Output: ApplicationsScreen, ApplicationCard, Apply functionality
+   - **Priority**: High - Core Worker workflow
+
+9. **Profile Screen** → Basic user management
+   - Dependencies: Auth system, API layer
+   - Output: ProfileScreen với update functionality
+   - **Priority**: Medium - Nice to have for MVP
+
+## Enhancement Layer (Build After MVP Works)
+
+10. **Chat/Messaging** → Important but not critical for MVP
+    - Dependencies: Applications feature (to initiate chat)
+    - Output: ChatListScreen, ChatScreen, Message components
+    - **Priority**: Medium - Can be added after MVP
+
+11. **Job Management Enhancements** → Improve existing features
+    - Dependencies: Jobs feature
+    - Output: Update, delete, complete job functionality
+    - **Priority**: Medium - Enhancements
+
+12. **Certificates** → Worker credential management
+    - Dependencies: Profile, Image upload
+    - Output: CertificatesScreen, upload functionality
+    - **Priority**: Low - Can be Phase 2
+
+13. **Reviews & Ratings** → Reputation system
+    - Dependencies: Job completion
+    - Output: Review screens, rating components
+    - **Priority**: Low - Phase 2 feature
+
+## Optimization Layer (Build When Core Works)
+
+14. **Error Handling & Loading States** → Improve UX
+    - Dependencies: All core features
+    - Output: Comprehensive error handling, loading indicators
+    - **Priority**: Medium - Important for production
+
+15. **Performance Optimization** → Scale and polish
+    - Dependencies: All features
+    - Output: Image caching, pagination, optimizations
+    - **Priority**: Low - Can be iterative
+
+## Development Strategy
+
+**Quick Win Approach:**
+1. Setup project → Run on emulator (Day 1)
+2. Auth system → Login/Register works (Day 2-3)
+3. Jobs List → See jobs on screen (Day 4)
+4. Job Creation → Create first job (Day 5)
+5. Applications → Apply to job (Day 6-7)
+
+**Goal**: Get to working MVP as fast as possible (1-2 weeks), then iterate.
+
+**Atomic Features:**
+- Mỗi feature có thể test độc lập
+- Features build upon each other
+- Có thể deploy từng feature incrementally
+
+# Risks and Mitigations  
+
+## Technical Challenges
+
+### Risk 1: Android Studio Setup Complexity
+- **Challenge**: Android Studio configuration có thể phức tạp, nhiều lỗi setup
+- **Mitigation**: 
+  - Document chi tiết setup steps
+  - Provide troubleshooting guide
+  - Test trên reference project (01-fe-react-native-todo)
+  - Use Expo để simplify development (không cần native build ngay)
+
+### Risk 2: API Integration Issues
+- **Challenge**: Backend API có thể thay đổi, hoặc có inconsistencies
+- **Mitigation**:
+  - Document tất cả API endpoints
+  - Create API client với proper error handling
+  - Test API calls independently
+  - Handle API versioning nếu cần
+
+### Risk 3: Image Upload & S3 Integration
+- **Challenge**: FormData upload có thể phức tạp, S3 URLs cần proper handling
+- **Mitigation**:
+  - Test image upload early
+  - Handle different image formats
+  - Implement proper error handling
+  - Use Expo Image component với remote URLs
+
+### Risk 4: State Management Complexity
+- **Challenge**: Managing state across nhiều screens có thể phức tạp
+- **Mitigation**:
+  - Start với Context API (simple)
+  - Refactor sang Zustand/Redux nếu cần
+  - Keep state local khi possible
+  - Document state flow
+
+### Risk 5: Real-time Chat Implementation
+- **Challenge**: Real-time messaging có thể phức tạp (WebSocket vs polling)
+- **Mitigation**:
+  - Start với polling (simpler)
+  - Upgrade to WebSocket sau nếu cần
+  - Use existing chat API từ backend
+  - Test với multiple users
+
+## MVP Scope Challenges
+
+### Risk 6: Feature Creep
+- **Challenge**: Muốn thêm nhiều features, MVP scope mở rộng
+- **Mitigation**:
+  - Define clear MVP scope (Phase 1 only)
+  - Defer advanced features to Phase 2+
+  - Focus on core user flows
+  - Get working MVP first, then enhance
+
+### Risk 7: Backend API Limitations
+- **Challenge**: Backend có thể thiếu một số endpoints cần thiết
+- **Mitigation**:
+  - Review backend API early
+  - Identify missing endpoints
+  - Work with backend team để add endpoints
+  - Mock data nếu cần để continue development
+
+### Risk 8: Performance với Large Lists
+- **Challenge**: Jobs list có thể rất dài, performance issues
+- **Mitigation**:
+  - Use FlatList (optimized)
+  - Implement pagination nếu cần
+  - Lazy load images
+  - Test với large datasets early
+
+## Resource Constraints
+
+### Risk 9: Development Time
+- **Challenge**: Có thể mất nhiều thời gian hơn dự kiến
+- **Mitigation**:
+  - Prioritize MVP features
+  - Use existing components/libraries
+  - Reuse code từ web app khi possible
+  - Focus on core flows first
+
+### Risk 10: Testing Coverage
+- **Challenge**: Khó test đầy đủ trên nhiều devices/OS versions
+- **Mitigation**:
+  - Test trên Android emulator (primary)
+  - Test trên real devices khi possible
+  - Use Expo Go để test nhanh
+  - Focus on critical paths
+
+### Risk 11: Build & Deployment Issues
+- **Challenge**: Build process có thể phức tạp, deployment issues
+- **Mitigation**:
+  - Use Expo EAS Build (simpler)
+  - Document build process
+  - Test builds early
+  - Have fallback plan (React Native CLI)
+
+## Mitigation Strategy Summary
+
+1. **Start Simple**: Use Expo, Context API, basic features
+2. **Iterate**: Get MVP working, then enhance
+3. **Document**: Keep documentation updated
+4. **Test Early**: Test critical paths frequently
+5. **Be Flexible**: Adapt khi gặp issues
+6. **Prioritize**: Focus on core user flows first
+
+# Appendix  
+
+## Research Findings
+
+### Expo vs React Native CLI
+- **Expo**: Easier setup, faster development, good for MVP
+- **React Native CLI**: More control, needed for advanced native features
+- **Decision**: Start with Expo, migrate to CLI nếu cần native features
+
+### State Management Options
+- **Context API**: Simple, built-in, good for MVP
+- **Zustand**: Lightweight, good alternative
+- **Redux Toolkit**: More complex, overkill for MVP
+- **Decision**: Start with Context API, consider Zustand nếu state becomes complex
+
+### Image Handling
+- **expo-image-picker**: Easy to use, good for MVP
+- **react-native-image-picker**: Alternative, more control
+- **Decision**: Use expo-image-picker for consistency với Expo
+
+### Navigation Library
+- **React Navigation**: Industry standard, well-documented
+- **Decision**: Use @react-navigation/native (standard choice)
+
+## Technical Specifications
+
+### File Structure
+```
+fixingapp-mobile/
+├── src/
+│   ├── api/           # API clients
+│   ├── components/    # Reusable components (design-matched với web)
+│   │   ├── common/    # Button, Input, Card (match web styles)
+│   │   ├── jobs/      # JobCard, JobFilters (exact match với web)
+│   │   └── ...
+│   ├── screens/       # Screen components
+│   ├── navigation/    # Navigation setup
+│   ├── context/       # Context providers
+│   ├── hooks/         # Custom hooks
+│   ├── types/         # TypeScript types
+│   ├── utils/         # Utility functions
+│   └── constants/     # Constants
+│       ├── design.ts  # Design tokens (colors, spacing, typography)
+│       ├── colors.ts  # Color palette (match web Tailwind)
+│       ├── spacing.ts # Spacing scale
+│       └── typography.ts # Typography scale
+├── App.tsx
+├── app.json
+└── package.json
+```
+
+### Design System Implementation
+
+**Design Tokens Structure:**
+- `src/constants/design.ts`: Centralized design tokens
+- Colors match Tailwind CSS classes từ web:
+  - `sky-500` → `#0ea5e9`
+  - `sky-600` → `#0284c7`
+  - `slate-200` → `#e2e8f0`
+  - `slate-700` → `#334155`
+  - etc.
+- Spacing scale: 4, 8, 12, 16, 24, 32 (match Tailwind)
+- Border radius: 6 (md), 8 (lg), 12 (xl), 9999 (full)
+- Typography: Match web font sizes và line heights
+
+**Component Style Mapping:**
+- Web Tailwind → React Native StyleSheet
+- Example: `rounded-xl border border-slate-200 bg-white shadow-sm` 
+  → `{ borderRadius: 12, borderWidth: 1, borderColor: Colors.slate[200], backgroundColor: Colors.white, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }`
+
+**Design Reference:**
+- Web components location: `frontend/app-ui/src/app/components/`
+- Key components to match:
+  - `JobCard.tsx`: Exact visual match
+  - `JobFilters.tsx`: Form styling match
+  - `Header.tsx`: Navigation styling reference
+  - `LoginForm.tsx`: Auth form styling
+  - `ChatWindow.tsx`: Chat UI reference
+
+### Environment Configuration
+- Development: `.env` file với `API_BASE_URL`
+- Production: Expo Constants hoặc build-time configuration
+- Android Emulator: Use `10.0.2.2` instead of `localhost`
+
+### API Base URLs
+- Development (Web): `http://localhost:3000`
+- Development (Android Emulator): `http://10.0.2.2:3000`
+- Production: TBD (production API URL)
+
+### Testing Strategy
+- Unit tests: API clients, utilities
+- Component tests: Reusable components
+- Integration tests: Key user flows
+- E2E tests: Optional, for critical paths
+
+### Build Configuration
+- **Development**: Expo Go app hoặc development build
+- **Preview**: EAS Build với APK
+- **Production**: EAS Build với AAB (Android) / IPA (iOS)
+
+## Reference Materials
+
+- React Native Documentation: https://reactnative.dev/
+- React Navigation: https://reactnavigation.org/
+- Expo Documentation: https://docs.expo.dev/
+- AsyncStorage: https://react-native-async-storage.github.io/async-storage/
+- Backend API Swagger: `http://localhost:3000/api-docs`
+- Reference Project: `01-fe-react-native-todo/` (tested configuration)
+
+## Design Reference - Web App Components
+
+**Web App Location**: `frontend/app-ui/src/app/components/`
+
+**Key Components to Match:**
+1. **JobCard** (`components/jobs/JobCard.tsx`):
+   - Rounded-xl, border slate-200, shadow-sm
+   - Image height: h-44 (176px)
+   - Status badge: rounded-full, white/90 background
+   - Skill tag: rounded-full, yellow-400 background
+   - Price badge: rounded-lg, sky-100 background, sky-700 text
+
+2. **JobFilters** (`components/jobs/JobFilters.tsx`):
+   - Rounded-xl, border slate-200, white background, shadow-sm
+   - Inputs: rounded-md, border slate-300, focus sky-500
+   - Button: rounded-full, bg-sky-600, hover sky-700
+
+3. **Header** (`components/layout/Header.tsx`):
+   - Navigation styling reference
+   - Button styles: rounded-full, sky-600 background
+
+4. **LoginForm** (`components/auth/LoginForm.tsx`):
+   - Form input styling
+   - Button styling match
+
+5. **ChatWindow** (`components/chat/ChatWindow.tsx`):
+   - Chat UI layout và styling reference
+
+**Color Palette Reference:**
+- Primary: sky-500 (#0ea5e9), sky-600 (#0284c7), sky-700 (#0369a1)
+- Text: slate-900 (#0f172a), slate-700 (#334155), slate-600 (#475569)
+- Backgrounds: white (#ffffff), slate-50 (#f8fafc), slate-100 (#f1f5f9)
+- Borders: slate-200 (#e2e8f0), slate-300 (#cbd5e1)
+- Accents: yellow-400 (#facc15), sky-100 (#e0f2fe)
+
+**Design Principles:**
+- Maintain exact visual parity với web components
+- Adapt interaction patterns cho mobile (touch vs hover)
+- Keep same information hierarchy và layout structure
+- Use same typography scale và spacing system
+
+## Version Compatibility
+
+**Tested Configuration:**
+- Expo SDK: 51.0.20
+- React Native: 0.74.3
+- React: 18.2.0
+- TypeScript: 5.3.3
+- Node.js: LTS version (16.x+)
+
+**Android Requirements:**
+- Android SDK Platform: 33+
+- Android SDK Build-Tools: Latest
+- Java: JDK 17 hoặc 11
+
+</PRD>
+

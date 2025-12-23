@@ -20,11 +20,6 @@ import {
   Notification,
 } from '../../services/notificationsApi';
 import { getTotalUnreadCount } from '../../services/messagesApi';
-import {
-  requestNotificationPermissions,
-  setBadgeCount,
-  clearBadge,
-} from '../../services/notificationService';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -39,11 +34,6 @@ export const NotificationsScreen: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
-  // Request notification permissions on mount
-  useEffect(() => {
-    requestNotificationPermissions();
-  }, []);
-
   // Load notifications and unread counts
   const loadData = useCallback(async () => {
     try {
@@ -57,14 +47,6 @@ export const NotificationsScreen: React.FC = () => {
 
       const unreadNotifs = notifs.filter((n) => !n.isRead).length;
       setUnreadCount(unreadNotifs);
-
-      // Update badge count
-      const totalUnread = unreadNotifs + messageCount;
-      if (totalUnread > 0) {
-        await setBadgeCount(totalUnread);
-      } else {
-        await clearBadge();
-      }
     } catch (error) {
       console.error('Error loading notifications:', error);
     } finally {
@@ -117,14 +99,6 @@ export const NotificationsScreen: React.FC = () => {
       );
       // Update unread count
       setUnreadCount((prev) => Math.max(0, prev - 1));
-      // Update badge
-      const newUnreadCount = notifications.filter((n) => !n.isRead && n.id !== notification.id).length;
-      const totalUnread = newUnreadCount + messageUnreadCount;
-      if (totalUnread > 0) {
-        await setBadgeCount(totalUnread);
-      } else {
-        await clearBadge();
-      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -136,12 +110,6 @@ export const NotificationsScreen: React.FC = () => {
       // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
-      // Update badge (only message unread count)
-      if (messageUnreadCount > 0) {
-        await setBadgeCount(messageUnreadCount);
-      } else {
-        await clearBadge();
-      }
     } catch (error) {
       console.error('Error marking all as read:', error);
     }

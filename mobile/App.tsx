@@ -1,13 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ActivityIndicator, Text, Alert } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { AuthStack } from './src/navigation/AuthStack';
 import { MainStack } from './src/navigation/MainStack';
-import { requestNotificationPermissions } from './src/services/notificationService';
 
 // Navigation reference type for root navigation
 type RootNavigationParamList = {
@@ -73,38 +71,7 @@ function AppContent() {
 
 // Root app component with AuthProvider and SafeAreaProvider
 export default function App() {
-  // Set up notification handlers
-  useEffect(() => {
-    // Request permissions on app start
-    requestNotificationPermissions();
-
-    // Handle notifications received while app is in foreground
-    const foregroundSubscription = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        // Show alert for foreground notifications
-        Alert.alert(
-          notification.request.content.title || 'Thông báo',
-          notification.request.content.body || notification.request.content.data?.content,
-          [{ text: 'OK' }]
-        );
-      }
-    );
-
-    // Handle notification taps
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = response.notification.request.content.data;
-        // Navigate to relevant screen based on notification data
-        // This would require navigation ref, which can be added later
-        console.log('Notification tapped:', data);
-      }
-    );
-
-    return () => {
-      foregroundSubscription.remove();
-      responseSubscription.remove();
-    };
-  }, []);
+  // Notification feature removed - using backend API only for in-app notifications
 
   return (
     <SafeAreaProvider>
