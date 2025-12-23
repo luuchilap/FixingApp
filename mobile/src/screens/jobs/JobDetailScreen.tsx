@@ -21,6 +21,8 @@ import {
   rejectApplication,
   ApplicationWithWorker,
 } from '../../services/applicationsApi';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ApplicationCard } from '../../components/applications/ApplicationCard';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { SKILLS } from '../../constants/skills';
