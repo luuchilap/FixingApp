@@ -6,6 +6,8 @@ import { JobsScreen } from '../screens/jobs/JobsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
+import { colors, spacing, typography, borderRadius } from '../constants/designTokens';
 
 export type MainTabsParamList = {
   Dashboard: undefined;
@@ -45,6 +47,7 @@ const getVisibleTabs = (role: string | undefined): (keyof MainTabsParamList)[] =
 
 export const MainTabs: React.FC = () => {
   const { user } = useAuth();
+  const { totalUnreadCount } = useNotifications();
   const userRole = user?.role;
   const visibleTabs = getVisibleTabs(userRole);
 
@@ -116,6 +119,13 @@ export const MainTabs: React.FC = () => {
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>🔔</Text>
+                {totalUnreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                    </Text>
+                  </View>
+                )}
               </View>
             ),
           }}
@@ -144,9 +154,29 @@ const styles = StyleSheet.create({
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   icon: {
     fontSize: 22,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.error[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: colors.background.white,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.inverse,
   },
 });
 

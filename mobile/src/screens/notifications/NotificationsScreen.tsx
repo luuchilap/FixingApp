@@ -1,8 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../hooks/useAuth';
+import { NotificationCard } from '../../components/notifications/NotificationCard';
+import {
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  Notification,
+} from '../../services/notificationsApi';
 import { getTotalUnreadCount } from '../../services/messagesApi';
+import {
+  requestNotificationPermissions,
+  setBadgeCount,
+  clearBadge,
+} from '../../services/notificationService';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -10,24 +32,118 @@ type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
 
+  // Request notification permissions on mount
   useEffect(() => {
-    loadUnreadCount();
-    // Poll for unread count every 10 seconds
-    const interval = setInterval(() => {
-      loadUnreadCount();
-    }, 10000);
-
-    return () => clearInterval(interval);
+    requestNotificationPermissions();
   }, []);
 
-  const loadUnreadCount = async () => {
+  // Load notifications and unread counts
+  const loadData = useCallback(async () => {
     try {
-      const count = await getTotalUnreadCount();
-      setUnreadCount(count);
+      const [notifs, messageCount] = await Promise.all([
+        getNotifications(),
+        getTotalUnreadCount().catch(() => 0),
+      ]);
+
+      setNotifications(notifs);
+      setMessageUnreadCount(messageCount);
+
+      const unreadNotifs = notifs.filter((n) => !n.isRead).length;
+      setUnreadCount(unreadNotifs);
+
+      // Update badge count
+      const totalUnread = unreadNotifs + messageCount;
+      if (totalUnread > 0) {
+        await setBadgeCount(totalUnread);
+      } else {
+        await clearBadge();
+      }
     } catch (error) {
-      console.error('Error loading unread count:', error);
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Poll for new notifications every 15 seconds
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 15000); // Poll every 15 seconds
+
+    return () => clearInterval(interval);
+  }, [user, loadData]);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
+
+  const handleNotificationPress = (notification: Notification) => {
+    // Mark as read if not already read
+    if (!notification.isRead) {
+      handleMarkAsRead(notification);
+    }
+    // Could navigate to relevant screen based on notification content
+  };
+
+  const handleMarkAsRead = async (notification: Notification) => {
+    try {
+      await markNotificationAsRead(notification.id);
+      // Update local state
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+      );
+      // Update unread count
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      // Update badge
+      const newUnreadCount = notifications.filter((n) => !n.isRead && n.id !== notification.id).length;
+      const totalUnread = newUnreadCount + messageUnreadCount;
+      if (totalUnread > 0) {
+        await setBadgeCount(totalUnread);
+      } else {
+        await clearBadge();
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      // Update local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      // Update badge (only message unread count)
+      if (messageUnreadCount > 0) {
+        await setBadgeCount(messageUnreadCount);
+      } else {
+        await clearBadge();
+      }
+    } catch (error) {
+      console.error('Error marking all as read:', error);
     }
   };
 
@@ -35,37 +151,82 @@ export const NotificationsScreen: React.FC = () => {
     navigation.navigate('ChatList');
   };
 
+  const renderNotificationItem = ({ item }: { item: Notification }) => (
+    <NotificationCard
+      notification={item}
+      onPress={handleNotificationPress}
+      onMarkAsRead={handleMarkAsRead}
+    />
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>Không có thông báo nào.</Text>
+    </View>
+  );
+
+  const unreadNotifications = notifications.filter((n) => !n.isRead);
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary[500]} />
+        <Text style={styles.loadingText}>Đang tải...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Thông báo</Text>
-      
-      <TouchableOpacity style={styles.chatCard} onPress={handleNavigateToChat}>
-        <View style={styles.chatCardContent}>
-          <Text style={styles.chatCardIcon}>💬</Text>
-          <View style={styles.chatCardInfo}>
-            <Text style={styles.chatCardTitle}>Tin nhắn</Text>
-            <Text style={styles.chatCardSubtitle}>
-              {unreadCount > 0
-                ? `${unreadCount} tin nhắn chưa đọc`
-                : 'Không có tin nhắn mới'}
-            </Text>
-          </View>
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {unreadCount > 99 ? '99+' : unreadCount}
+    <View style={styles.container}>
+      {/* Header Actions */}
+      {unreadNotifications.length > 0 && (
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
+            <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Chat Card */}
+      <View style={styles.chatCardContainer}>
+        <TouchableOpacity style={styles.chatCard} onPress={handleNavigateToChat}>
+          <View style={styles.chatCardContent}>
+            <Text style={styles.chatCardIcon}>💬</Text>
+            <View style={styles.chatCardInfo}>
+              <Text style={styles.chatCardTitle}>Tin nhắn</Text>
+              <Text style={styles.chatCardSubtitle}>
+                {messageUnreadCount > 0
+                  ? `${messageUnreadCount} tin nhắn chưa đọc`
+                  : 'Không có tin nhắn mới'}
               </Text>
             </View>
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          Các thông báo khác sẽ hiển thị ở đây.
-        </Text>
+            {messageUnreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {messageUnreadCount > 99 ? '99+' : messageUnreadCount}
+                </Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+
+      {/* Notifications List */}
+      <FlatList
+        data={notifications}
+        renderItem={renderNotificationItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary[500]]}
+          />
+        }
+      />
+    </View>
   );
 };
 
@@ -74,20 +235,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background.white,
   },
-  content: {
-    padding: spacing[4],
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing[3],
   },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing[6],
+  loadingText: {
+    fontSize: typography.fontSize.base,
+    color: colors.text.secondary,
+  },
+  headerActions: {
+    padding: spacing[4],
+    paddingBottom: spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  markAllButton: {
+    alignSelf: 'flex-end',
+  },
+  markAllText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[500],
+    fontWeight: typography.fontWeight.medium,
+  },
+  chatCardContainer: {
+    padding: spacing[4],
+    paddingBottom: spacing[2],
   },
   chatCard: {
     backgroundColor: colors.background.white,
     borderRadius: 8,
     padding: spacing[4],
-    marginBottom: spacing[4],
     borderWidth: 1,
     borderColor: colors.border.light,
     shadowColor: '#000',
@@ -131,17 +310,19 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: colors.text.inverse,
   },
-  infoBox: {
-    backgroundColor: colors.background.gray,
-    borderRadius: 8,
+  listContent: {
     padding: spacing[4],
-    borderWidth: 1,
-    borderColor: colors.border.light,
+    paddingTop: spacing[2],
   },
-  infoText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.text.secondary,
-    lineHeight: 20,
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[6],
+  },
+  emptyText: {
+    fontSize: typography.fontSize.base,
+    color: colors.text.tertiary,
+    textAlign: 'center',
   },
 });
-
