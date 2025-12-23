@@ -1,12 +1,39 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Text, TouchableOpacity, Alert } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { LoginScreen } from './src/screens/auth/LoginScreen';
 
 // Main app content that uses auth
 function AppContent() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
+
+  // Handle logout with confirmation
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   // Show loading spinner while checking auth state
   if (isLoading) {
@@ -42,6 +69,10 @@ function AppContent() {
         </Text>
         <Text style={styles.roleText}>Role: {user?.role}</Text>
         <Text style={styles.version}>Version 1.0.0</Text>
+        
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
       </View>
       <StatusBar style="auto" />
     </View>
@@ -113,5 +144,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 16,
+  },
+  logoutButton: {
+    marginTop: 32,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    backgroundColor: '#ef4444',
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
