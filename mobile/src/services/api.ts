@@ -14,9 +14,14 @@ export const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   async (config) => {
-    const token = await storage.getItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await storage.getItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Error retrieving token from storage:', error);
+      // Continue with request even if token retrieval fails
     }
     return config;
   },
@@ -29,11 +34,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const originalRequest = error.config;
+
+    // Handle 401 Unauthorized - token expired or invalid
     if (error.response?.status === 401) {
-      // Token expired or invalid - clear storage and redirect to login
-      await storage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-      await storage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+      try {
+        // Clear stored authentication data
+        await storage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+        await storage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
+        
+        // Note: Token refresh is not implemented as backend doesn't support it
+        // In a production app with refresh tokens, you would:
+        // 1. Attempt to refresh the token
+        // 2. Retry the original request with the new token
+        // 3. If refresh fails, redirect to login
+        
+        console.log('Authentication token expired or invalid. User will be redirected to login.');
+      } catch (storageError) {
+        console.error('Error clearing storage on 401:', storageError);
+      }
     }
+
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error:', error.message);
+    }
+
     return Promise.reject(error);
   }
 );

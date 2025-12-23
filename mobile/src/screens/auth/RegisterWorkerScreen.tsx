@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RegisterWorkerForm } from '../../components/auth/RegisterWorkerForm';
 import { useAuth } from '../../hooks/useAuth';
+import { AuthStackParamList } from '../../navigation/AuthStack';
 
-interface RegisterWorkerScreenProps {
-  onNavigateToLogin?: () => void;
-}
+type RegisterWorkerScreenProps = NativeStackScreenProps<AuthStackParamList, 'RegisterWorker'>;
 
-export const RegisterWorkerScreen: React.FC<RegisterWorkerScreenProps> = ({ onNavigateToLogin }) => {
+export const RegisterWorkerScreen: React.FC<RegisterWorkerScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
 
   const handleSuccess = () => {
@@ -18,7 +18,10 @@ export const RegisterWorkerScreen: React.FC<RegisterWorkerScreenProps> = ({ onNa
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <RegisterWorkerForm onSuccess={handleSuccess} onNavigateToLogin={onNavigateToLogin} />
+      <RegisterWorkerForm 
+        onSuccess={handleSuccess} 
+        onNavigateToLogin={() => navigation.navigate('Login')} 
+      />
     </ScrollView>
   );
 };

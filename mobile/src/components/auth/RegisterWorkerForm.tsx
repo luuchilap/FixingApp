@@ -25,14 +25,14 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [address, setAddress] = useState('');
-  const [skill, setSkill] = useState<SkillValue | ''>('');
+  const [skill, setSkill] = useState<SkillValue | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setError(null);
 
     // Validation
-    if (!phone || !password || !fullName || !skill) {
+    if (!phone || !password || !fullName || !skill || skill === '') {
       setError('Please fill in all required fields');
       return;
     }
@@ -132,10 +132,10 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
           </Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={skill}
-              onValueChange={(value) => setSkill(value)}
+              selectedValue={skill || ''}
+              onValueChange={(value) => setSkill(value || null)}
               style={styles.picker}
-              enabled={!isLoading}
+              enabled={isLoading === false}
             >
               <Picker.Item label="-- Select skill --" value="" />
               {SKILLS.map((skillOption) => (

@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { useAuth } from '../../hooks/useAuth';
+import { AuthStackParamList } from '../../navigation/AuthStack';
 
-interface LoginScreenProps {
-  onNavigateToRegister?: (role: 'EMPLOYER' | 'WORKER') => void;
-}
+type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
 
   const handleSuccess = () => {
@@ -18,7 +18,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <LoginForm onSuccess={handleSuccess} onNavigateToRegister={onNavigateToRegister} />
+      <LoginForm 
+        onSuccess={handleSuccess} 
+        onNavigateToRegister={(role) => {
+          if (role === 'EMPLOYER') {
+            navigation.navigate('RegisterEmployer');
+          } else {
+            navigation.navigate('RegisterWorker');
+          }
+        }} 
+      />
     </ScrollView>
   );
 };
