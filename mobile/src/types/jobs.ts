@@ -21,7 +21,25 @@ export interface Application {
   id: number;
   jobId: number;
   workerId: number;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
-  createdAt: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'APPLIED';
+  createdAt?: string;
+  appliedAt?: number;
+  worker?: {
+    id: number;
+    phone: string;
+    fullName: string;
+    address?: string;
+    skill?: string;
+    avgRating?: number | null;
+    isVerified: boolean;
+  };
+  job?: {
+    id: number;
+    title: string;
+    price: number;
+    address: string;
+    status: string;
+    employerName?: string;
+  };
 }
 

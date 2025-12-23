@@ -13,7 +13,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Job } from '../../types/jobs';
-import { getJobById, applyToJob } from '../../services/jobsApi';
+import { getJobById } from '../../services/jobsApi';
+import {
+  applyToJob,
+  getJobApplications,
+  acceptApplication,
+  rejectApplication,
+  ApplicationWithWorker,
+} from '../../services/applicationsApi';
+import { ApplicationCard } from '../../components/applications/ApplicationCard';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { SKILLS } from '../../constants/skills';
 import { MainStackParamList } from '../../navigation/MainStack';
@@ -62,10 +70,16 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [applications, setApplications] = useState<ApplicationWithWorker[]>([]);
+  const [loadingApplications, setLoadingApplications] = useState(false);
+  const [processingAction, setProcessingAction] = useState(false);
 
   useEffect(() => {
     loadJob();
-  }, [jobId]);
+    if (user?.role === 'EMPLOYER') {
+      loadApplications();
+    }
+  }, [jobId, user?.role]);
 
   const loadJob = async () => {
     try {
@@ -79,6 +93,20 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadApplications = async () => {
+    if (user?.role !== 'EMPLOYER') return;
+
+    try {
+      setLoadingApplications(true);
+      const apps = await getJobApplications(jobId);
+      setApplications(apps);
+    } catch (err: unknown) {
+      console.error('Error loading applications:', err);
+    } finally {
+      setLoadingApplications(false);
     }
   };
 
@@ -96,14 +124,80 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
             try {
               setApplying(true);
               await applyToJob(job.id);
-              Alert.alert('Thành công', 'Bạn đã ứng tuyển thành công!');
-              // Reload job to get updated status
-              await loadJob();
+              Alert.alert('Thành công', 'Bạn đã ứng tuyển thành công!', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    loadJob();
+                  },
+                },
+              ]);
             } catch (err: unknown) {
-              const errorMessage = err instanceof Error ? err.message : 'Failed to apply';
+              const errorMessage =
+                err instanceof Error ? err.message : 'Failed to apply';
               Alert.alert('Lỗi', errorMessage);
             } finally {
               setApplying(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleAccept = async (application: ApplicationWithWorker) => {
+    if (!job) return;
+
+    Alert.alert(
+      'Chấp nhận ứng viên',
+      `Bạn có chắc chắn muốn chấp nhận ${application.worker?.fullName || 'ứng viên này'}?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Chấp nhận',
+          onPress: async () => {
+            try {
+              setProcessingAction(true);
+              await acceptApplication(job.id, application.workerId);
+              Alert.alert('Thành công', 'Đã chấp nhận ứng viên!');
+              await loadJob();
+              await loadApplications();
+            } catch (err: unknown) {
+              const errorMessage =
+                err instanceof Error ? err.message : 'Failed to accept application';
+              Alert.alert('Lỗi', errorMessage);
+            } finally {
+              setProcessingAction(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReject = async (application: ApplicationWithWorker) => {
+    if (!job) return;
+
+    Alert.alert(
+      'Từ chối ứng viên',
+      `Bạn có chắc chắn muốn từ chối ${application.worker?.fullName || 'ứng viên này'}?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Từ chối',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setProcessingAction(true);
+              await rejectApplication(job.id, application.workerId);
+              Alert.alert('Thành công', 'Đã từ chối ứng viên.');
+              await loadApplications();
+            } catch (err: unknown) {
+              const errorMessage =
+                err instanceof Error ? err.message : 'Failed to reject application';
+              Alert.alert('Lỗi', errorMessage);
+            } finally {
+              setProcessingAction(false);
             }
           },
         },
@@ -196,6 +290,33 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
         <Text style={styles.descriptionTitle}>Mô tả công việc</Text>
         <Text style={styles.description}>{job.description}</Text>
       </Card>
+
+      {/* Applications Section (Employer only) */}
+      {isEmployer && job.employerId === user?.id && (
+        <Card variant="default" padding={4} style={styles.applicationsCard}>
+          <Text style={styles.sectionTitle}>Danh sách ứng viên ({applications.length})</Text>
+          {loadingApplications ? (
+            <View style={styles.loadingApplications}>
+              <ActivityIndicator size="small" color={colors.primary[500]} />
+              <Text style={styles.loadingText}>Đang tải...</Text>
+            </View>
+          ) : applications.length > 0 ? (
+            <View style={styles.applicationsList}>
+              {applications.map((application) => (
+                <ApplicationCard
+                  key={application.id}
+                  application={application}
+                  showActions={true}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.noApplicationsText}>Chưa có ứng viên nào ứng tuyển.</Text>
+          )}
+        </Card>
+      )}
 
       {/* Actions */}
       {canApply && (
@@ -325,6 +446,31 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  applicationsCard: {
+    margin: spacing[4],
+    marginTop: 0,
+  },
+  sectionTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing[3],
+  },
+  loadingApplications: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    padding: spacing[4],
+  },
+  applicationsList: {
+    gap: spacing[2],
+  },
+  noApplicationsText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    padding: spacing[4],
   },
 });
 

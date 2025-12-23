@@ -7,45 +7,51 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-import { JobCard } from '../../components/jobs/JobCard';
-import { Job } from '../../types/jobs';
-import { listJobs, getMyJobs } from '../../services/jobsApi';
+import { ApplicationCard } from '../../components/applications/ApplicationCard';
+import {
+  getMyApplications,
+  getJobApplications,
+  ApplicationWithJob,
+  ApplicationWithWorker,
+} from '../../services/applicationsApi';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
-export const JobsListScreen: React.FC = () => {
+export const ApplicationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<
+    (ApplicationWithJob | ApplicationWithWorker)[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadJobs = useCallback(async () => {
+  const loadApplications = useCallback(async () => {
     try {
       setError(null);
-      let jobsData: Job[];
+      let apps: (ApplicationWithJob | ApplicationWithWorker)[];
 
-      if (user?.role === 'EMPLOYER') {
-        // Employers see their own jobs
-        jobsData = await getMyJobs();
+      if (user?.role === 'WORKER') {
+        // Workers see their own applications
+        apps = await getMyApplications();
       } else {
-        // Workers see all available jobs
-        jobsData = await listJobs({ status: 'CHUA_LAM' });
+        // For employers, we'd need a jobId - this screen shows all applications
+        // For now, show empty or redirect to job detail
+        apps = [];
       }
 
-      setJobs(jobsData);
+      setApplications(apps);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load jobs';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load applications';
       setError(errorMessage);
-      console.error('Error loading jobs:', err);
+      console.error('Error loading applications:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -53,28 +59,39 @@ export const JobsListScreen: React.FC = () => {
   }, [user?.role]);
 
   useEffect(() => {
-    loadJobs();
-  }, [loadJobs]);
+    loadApplications();
+  }, [loadApplications]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    loadJobs();
-  }, [loadJobs]);
+    loadApplications();
+  }, [loadApplications]);
 
-  const handleJobPress = (job: Job) => {
-    navigation.navigate('JobDetail', { jobId: job.id });
+  const handleApplicationPress = (application: ApplicationWithJob | ApplicationWithWorker) => {
+    // Navigate to job detail if it's a worker view
+    if ('job' in application && application.job) {
+      navigation.navigate('JobDetail', { jobId: application.job.id });
+    }
   };
 
-  const renderJobItem = ({ item }: { item: Job }) => (
-    <JobCard job={item} onPress={handleJobPress} />
+  const renderApplicationItem = ({
+    item,
+  }: {
+    item: ApplicationWithJob | ApplicationWithWorker;
+  }) => (
+    <ApplicationCard
+      application={item}
+      onPress={handleApplicationPress}
+      showActions={false}
+    />
   );
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyText}>
-        {user?.role === 'EMPLOYER'
-          ? 'Bạn chưa đăng công việc nào. Hãy tạo công việc mới!'
-          : 'Không có công việc nào phù hợp.'}
+        {user?.role === 'WORKER'
+          ? 'Bạn chưa ứng tuyển công việc nào.'
+          : 'Không có ứng viên nào.'}
       </Text>
     </View>
   );
@@ -94,7 +111,7 @@ export const JobsListScreen: React.FC = () => {
     );
   }
 
-  if (error && jobs.length === 0) {
+  if (error && applications.length === 0) {
     return (
       <View style={styles.container}>
         {renderError()}
@@ -102,25 +119,11 @@ export const JobsListScreen: React.FC = () => {
     );
   }
 
-  const handleCreateJob = () => {
-    navigation.navigate('CreateJob');
-  };
-
   return (
     <View style={styles.container}>
-      {user?.role === 'EMPLOYER' && (
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={handleCreateJob}
-          >
-            <Text style={styles.createButtonText}>+ Đăng công việc mới</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       <FlatList
-        data={jobs}
-        renderItem={renderJobItem}
+        data={applications}
+        renderItem={renderApplicationItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
@@ -140,25 +143,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background.white,
-  },
-  header: {
-    padding: spacing[4],
-    paddingBottom: spacing[2],
-    backgroundColor: colors.background.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
-  },
-  createButton: {
-    backgroundColor: colors.primary[500],
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  createButtonText: {
-    color: colors.text.inverse,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
   },
   listContent: {
     padding: spacing[4],

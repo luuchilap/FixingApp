@@ -19,6 +19,10 @@ api.interceptors.request.use(
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      // If FormData is being sent, don't set Content-Type (axios will handle it)
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      }
     } catch (error) {
       console.error('Error retrieving token from storage:', error);
       // Continue with request even if token retrieval fails

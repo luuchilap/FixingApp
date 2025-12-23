@@ -144,8 +144,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const response = await api.get<{ user: User }>('/users/me');
-      const updatedUser = response.data.user;
+      const response = await api.get<User>('/users/me');
+      const updatedUser = response.data;
       
       await storage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(updatedUser));
       setUser(updatedUser);

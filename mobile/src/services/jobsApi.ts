@@ -40,10 +40,15 @@ export const getMyJobs = async (): Promise<JobWithImages[]> => {
   return response.data;
 };
 
+// Note: applyToJob has been moved to applicationsApi.ts
+
 /**
- * Apply to a job (Worker only)
+ * Create a new job (Employer only)
  */
-export const applyToJob = async (jobId: number): Promise<void> => {
-  await api.post(`/jobs/${jobId}/apply`);
+export const createJob = async (formData: FormData): Promise<JobWithImages> => {
+  // Axios will automatically set Content-Type with boundary for FormData
+  // The interceptor already handles removing Content-Type for FormData
+  const response = await api.post<JobWithImages>('/jobs', formData);
+  return response.data;
 };
 

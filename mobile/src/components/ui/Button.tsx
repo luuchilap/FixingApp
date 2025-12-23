@@ -42,20 +42,30 @@ export const Button: React.FC<ButtonProps> = ({
       styles.button,
       styles[`button_${size}`],
       styles[`button_${variant}`],
-      fullWidth && styles.button_fullWidth,
-      isDisabled && styles.button_disabled,
     ];
 
-    return baseStyle.filter(Boolean) as ViewStyle[];
+    if (fullWidth) {
+      baseStyle.push(styles.button_fullWidth);
+    }
+    if (isDisabled) {
+      baseStyle.push(styles.button_disabled);
+    }
+
+    return baseStyle;
   };
 
   const getTextStyle = (): TextStyle[] => {
-    return [
+    const textStyles: TextStyle[] = [
       styles.text,
       styles[`text_${size}`],
       styles[`text_${variant}`],
-      isDisabled && styles.text_disabled,
     ];
+
+    if (isDisabled) {
+      textStyles.push(styles.text_disabled);
+    }
+
+    return textStyles;
   };
 
   return (
