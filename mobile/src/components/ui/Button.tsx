@@ -13,7 +13,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'gh
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps {
-  title: string;
+  title?: string;
+  children?: React.ReactNode;
   onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -26,6 +27,7 @@ export interface ButtonProps {
 
 export const Button: React.FC<ButtonProps> = ({
   title,
+  children,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -81,7 +83,18 @@ export const Button: React.FC<ButtonProps> = ({
           size="small"
         />
       ) : (
-        <Text style={[...getTextStyle(), textStyle]}>{title}</Text>
+        // Prefer children when provided (allows usage like <Button>Text</Button>),
+        // otherwise fall back to the `title` prop for backwards compatibility.
+        children ? (
+          typeof children === 'string' ? (
+            <Text style={[...getTextStyle(), textStyle]}>{children}</Text>
+          ) : (
+            // If children is a React element, render it directly.
+            children
+          )
+        ) : (
+          <Text style={[...getTextStyle(), textStyle]}>{title}</Text>
+        )
       )}
     </TouchableOpacity>
   );
