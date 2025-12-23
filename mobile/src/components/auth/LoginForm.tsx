@@ -13,9 +13,10 @@ import { validatePhone, validatePassword } from '../../utils/validation';
 
 interface LoginFormProps {
   onSuccess?: () => void;
+  onNavigateToRegister?: (role: 'EMPLOYER' | 'WORKER') => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onNavigateToRegister }) => {
   const { login, isLoading } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -108,6 +109,26 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      <View style={styles.registerSection}>
+        <Text style={styles.registerText}>Don't have an account?</Text>
+        <View style={styles.registerButtons}>
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={() => onNavigateToRegister?.('EMPLOYER')}
+            disabled={isLoading}
+          >
+            <Text style={styles.registerButtonText}>Register as Employer</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.registerButton}
+            onPress={() => onNavigateToRegister?.('WORKER')}
+            disabled={isLoading}
+          >
+            <Text style={styles.registerButtonText}>Register as Worker</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 };
@@ -192,6 +213,32 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  registerSection: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  registerText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 12,
+  },
+  registerButtons: {
+    width: '100%',
+    gap: 8,
+  },
+  registerButton: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+  },
+  registerButtonText: {
+    color: '#0284c7',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

@@ -16,9 +16,10 @@ import { SKILLS, SkillValue } from '../../constants/skills';
 
 interface RegisterWorkerFormProps {
   onSuccess?: () => void;
+  onNavigateToLogin?: () => void;
 }
 
-export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSuccess }) => {
+export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSuccess, onNavigateToLogin }) => {
   const { register, isLoading } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -161,6 +162,16 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
             <Text style={styles.buttonText}>Create worker account</Text>
           )}
         </TouchableOpacity>
+
+        {onNavigateToLogin && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={onNavigateToLogin}
+            disabled={isLoading}
+          >
+            <Text style={styles.backButtonText}>Back to Login</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
@@ -236,6 +247,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  backButton: {
+    marginTop: 16,
+    padding: 12,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

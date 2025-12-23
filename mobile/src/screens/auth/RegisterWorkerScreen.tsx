@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { RegisterWorkerForm } from '../../components/auth/RegisterWorkerForm';
 import { useAuth } from '../../hooks/useAuth';
 
-export const RegisterWorkerScreen: React.FC = () => {
+interface RegisterWorkerScreenProps {
+  onNavigateToLogin?: () => void;
+}
+
+export const RegisterWorkerScreen: React.FC<RegisterWorkerScreenProps> = ({ onNavigateToLogin }) => {
   const { user } = useAuth();
 
   const handleSuccess = () => {
@@ -13,9 +17,9 @@ export const RegisterWorkerScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <RegisterWorkerForm onSuccess={handleSuccess} />
-    </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <RegisterWorkerForm onSuccess={handleSuccess} onNavigateToLogin={onNavigateToLogin} />
+    </ScrollView>
   );
 };
 
@@ -23,6 +27,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  content: {
+    flexGrow: 1,
   },
 });
 

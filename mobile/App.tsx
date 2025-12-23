@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator, Text, TouchableOpacity, Alert } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { LoginScreen } from './src/screens/auth/LoginScreen';
+import { RegisterEmployerScreen } from './src/screens/auth/RegisterEmployerScreen';
+import { RegisterWorkerScreen } from './src/screens/auth/RegisterWorkerScreen';
+
+type AuthScreen = 'login' | 'register-employer' | 'register-worker';
 
 // Main app content that uses auth
 function AppContent() {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const [authScreen, setAuthScreen] = useState<AuthScreen>('login');
 
   // Handle logout with confirmation
   const handleLogout = () => {
@@ -46,11 +51,21 @@ function AppContent() {
     );
   }
 
-  // Show login screen if not authenticated
+  // Show auth screens if not authenticated
   if (!isAuthenticated) {
     return (
       <>
-        <LoginScreen />
+        {authScreen === 'login' && (
+          <LoginScreen onNavigateToRegister={(role: 'EMPLOYER' | 'WORKER') => {
+            setAuthScreen(role === 'EMPLOYER' ? 'register-employer' : 'register-worker');
+          }} />
+        )}
+        {authScreen === 'register-employer' && (
+          <RegisterEmployerScreen onNavigateToLogin={() => setAuthScreen('login')} />
+        )}
+        {authScreen === 'register-worker' && (
+          <RegisterWorkerScreen onNavigateToLogin={() => setAuthScreen('login')} />
+        )}
         <StatusBar style="auto" />
       </>
     );

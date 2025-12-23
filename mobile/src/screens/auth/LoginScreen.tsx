@@ -3,7 +3,11 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { LoginForm } from '../../components/auth/LoginForm';
 import { useAuth } from '../../hooks/useAuth';
 
-export const LoginScreen: React.FC = () => {
+interface LoginScreenProps {
+  onNavigateToRegister?: (role: 'EMPLOYER' | 'WORKER') => void;
+}
+
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigateToRegister }) => {
   const { user } = useAuth();
 
   const handleSuccess = () => {
@@ -14,7 +18,7 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <LoginForm onSuccess={handleSuccess} />
+      <LoginForm onSuccess={handleSuccess} onNavigateToRegister={onNavigateToRegister} />
     </ScrollView>
   );
 };
