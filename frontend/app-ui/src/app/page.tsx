@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { fetchJobs } from "../lib/api/jobs";
 import type { Job } from "../lib/types/jobs";
 import { JobList } from "./components/jobs/JobList";
@@ -73,6 +74,16 @@ function HomeContent() {
           Latest jobs
         </h2>
         <JobList jobs={jobs} isLoading={isLoading} />
+        {!isLoading && jobs.length > 0 && (
+          <div className="flex justify-center pt-4">
+            <Link
+              href="/jobs"
+              className="inline-flex items-center justify-center rounded-full bg-sky-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-700 transition-colors"
+            >
+              Xem tất cả việc làm
+            </Link>
+          </div>
+        )}
       </section>
     </div>
   );
