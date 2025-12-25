@@ -30,7 +30,7 @@ NODE_ENV=production
 
 ### Step 4: Deploy
 
-Click "Deploy" and wait for build to complete.
+Click "Deploy" and wait for build to complete
 
 ### Step 5: Run Migrations
 
