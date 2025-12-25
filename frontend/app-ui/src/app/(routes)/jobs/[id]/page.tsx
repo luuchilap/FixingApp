@@ -144,6 +144,27 @@ export default function JobDetailPage() {
           </div>
         </header>
 
+        {/* Job Images */}
+        {job.images && job.images.length > 0 && (
+          <div className="mt-6">
+            <h3 className="mb-3 text-sm font-semibold text-slate-700">Hình ảnh công việc</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {job.images.map((image, index) => (
+                <div
+                  key={index}
+                  className="relative aspect-video w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
+                >
+                  <img
+                    src={image.url}
+                    alt={`Job image ${index + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-4 space-y-2 text-sm text-slate-600">
           <p>
             <span className="font-medium text-slate-700">Address: </span>
