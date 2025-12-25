@@ -2,13 +2,13 @@
  * Vercel Serverless Function Entry Point
  * Wraps the Express app for Vercel deployment
  * 
- * Note: Migrations should be run separately before deployment
- * or on first function invocation (with caching to prevent re-runs)
+ * This file must be in the /api directory for Vercel to recognize it
+ * as a serverless function when using the builds configuration.
  */
 
 require('dotenv').config();
 
-// Only run migrations once (cache the result)
+// Only run migrations once (cache the result per function instance)
 let migrationsRun = false;
 
 async function ensureMigrations() {
@@ -30,6 +30,7 @@ async function ensureMigrations() {
 ensureMigrations().catch(console.error);
 
 // Export the Express app as a serverless function
+// Vercel expects this to be a standard Express app export
 const app = require('../src/app');
 
 module.exports = app;

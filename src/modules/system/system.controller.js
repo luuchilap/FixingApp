@@ -5,6 +5,7 @@
 
 const db = require('../../config/db');
 const { sendNotification } = require('../notifications/notifications.controller');
+const { runMigrations } = require('../../database/migrate');
 
 /**
  * Expire handover jobs that are overdue (30 days)
@@ -82,6 +83,49 @@ async function expireHandoverJobs(req, res, next) {
   }
 }
 
+/**
+ * Run database migrations
+ * Protected by MIGRATION_SECRET environment variable
+ */
+async function runDatabaseMigrations(req, res, next) {
+  try {
+    const migrationSecret = process.env.MIGRATION_SECRET;
+    const providedSecret = req.headers['x-migration-key'] || req.body.secret;
+
+    // Check if migration secret is configured
+    if (!migrationSecret) {
+      return res.status(500).json({
+        error: 'Migration secret not configured',
+        message: 'MIGRATION_SECRET environment variable must be set'
+      });
+    }
+
+    // Verify secret
+    if (providedSecret !== migrationSecret) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid migration secret'
+      });
+    }
+
+    // Run migrations
+    await runMigrations();
+
+    res.status(200).json({
+      message: 'Migrations completed successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({
+      error: 'Migration failed',
+      message: error.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    });
+  }
+}
+
 module.exports = {
-  expireHandoverJobs
+  expireHandoverJobs,
+  runDatabaseMigrations
 };

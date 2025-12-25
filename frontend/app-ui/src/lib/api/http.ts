@@ -1,5 +1,14 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+// Get API base URL from environment or use current origin (for Vercel same-origin requests)
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    // Client-side: use env var or current origin
+    return process.env.NEXT_PUBLIC_API_BASE_URL ?? window.location.origin;
+  }
+  // Server-side: use env var or localhost fallback
+  return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export interface ApiError {
   status: number;
@@ -113,13 +122,27 @@ export async function apiGet<T>(
     }
   }
 
-  const res = await fetch(buildUrl(path, query), {
-    ...init,
-    method: "GET",
-    headers: headers as HeadersInit,
-  });
+  try {
+    const res = await fetch(buildUrl(path, query), {
+      ...init,
+      method: "GET",
+      headers: headers as HeadersInit,
+    });
 
-  return handleResponse<T>(res);
+    return handleResponse<T>(res);
+  } catch (error) {
+    // Handle network errors (Failed to fetch)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      const apiError: ApiError = {
+        status: 0,
+        message: `Cannot connect to API at ${API_BASE_URL}. Make sure the backend server is running.`,
+        error: 'Network Error'
+      };
+      console.error('Network error:', apiError.message);
+      throw apiError;
+    }
+    throw error;
+  }
 }
 
 export async function apiPost<TReq, TRes>(
@@ -144,14 +167,28 @@ export async function apiPost<TReq, TRes>(
     }
   }
 
-  const res = await fetch(buildUrl(path), {
-    ...init,
-    method: "POST",
-    headers: headers as HeadersInit,
-    body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
-  });
+  try {
+    const res = await fetch(buildUrl(path), {
+      ...init,
+      method: "POST",
+      headers: headers as HeadersInit,
+      body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
+    });
 
-  return handleResponse<TRes>(res);
+    return handleResponse<TRes>(res);
+  } catch (error) {
+    // Handle network errors (Failed to fetch)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      const apiError: ApiError = {
+        status: 0,
+        message: `Cannot connect to API at ${API_BASE_URL}. Make sure the backend server is running.`,
+        error: 'Network Error'
+      };
+      console.error('Network error:', apiError.message);
+      throw apiError;
+    }
+    throw error;
+  }
 }
 
 export async function apiPut<TReq, TRes>(
@@ -176,14 +213,28 @@ export async function apiPut<TReq, TRes>(
     }
   }
 
-  const res = await fetch(buildUrl(path), {
-    ...init,
-    method: "PUT",
-    headers: headers as HeadersInit,
-    body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
-  });
+  try {
+    const res = await fetch(buildUrl(path), {
+      ...init,
+      method: "PUT",
+      headers: headers as HeadersInit,
+      body: isFormData ? (body as unknown as BodyInit) : JSON.stringify(body),
+    });
 
-  return handleResponse<TRes>(res);
+    return handleResponse<TRes>(res);
+  } catch (error) {
+    // Handle network errors (Failed to fetch)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      const apiError: ApiError = {
+        status: 0,
+        message: `Cannot connect to API at ${API_BASE_URL}. Make sure the backend server is running.`,
+        error: 'Network Error'
+      };
+      console.error('Network error:', apiError.message);
+      throw apiError;
+    }
+    throw error;
+  }
 }
 
 export async function apiDelete<TRes>(
@@ -202,13 +253,27 @@ export async function apiDelete<TRes>(
     }
   }
 
-  const res = await fetch(buildUrl(path), {
-    ...init,
-    method: "DELETE",
-    headers: headers as HeadersInit,
-  });
+  try {
+    const res = await fetch(buildUrl(path), {
+      ...init,
+      method: "DELETE",
+      headers: headers as HeadersInit,
+    });
 
-  return handleResponse<TRes>(res);
+    return handleResponse<TRes>(res);
+  } catch (error) {
+    // Handle network errors (Failed to fetch)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      const apiError: ApiError = {
+        status: 0,
+        message: `Cannot connect to API at ${API_BASE_URL}. Make sure the backend server is running.`,
+        error: 'Network Error'
+      };
+      console.error('Network error:', apiError.message);
+      throw apiError;
+    }
+    throw error;
+  }
 }
 
 
