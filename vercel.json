@@ -31,10 +31,5 @@
       "src": "/(.*)",
       "dest": "/frontend/app-ui/$1"
     }
-  ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
