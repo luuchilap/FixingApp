@@ -4,6 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
@@ -72,11 +75,29 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
   };
 
   const hasActiveFilters = keyword.trim() || category || minPrice.trim() || maxPrice.trim();
+  const [expanded, setExpanded] = React.useState(false);
+
+  // Enable LayoutAnimation on Android
+  React.useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      // @ts-ignore
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  const toggleExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((v) => !v);
+  };
 
   return (
     <Card variant="default" style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Lọc công việc</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={toggleExpanded} style={styles.headerTouchable} activeOpacity={0.8}>
+          <Text style={styles.chevron}>{expanded ? '▾' : '▸'}</Text>
+          <Text style={styles.title}>Lọc công việc</Text>
+        </TouchableOpacity>
+
         {hasActiveFilters && (
           <TouchableOpacity onPress={onClear} style={styles.clearButton}>
             <Text style={styles.clearButtonText}>Xóa bộ lọc</Text>
@@ -84,7 +105,8 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
         )}
       </View>
 
-      <View style={styles.form}>
+      {expanded && (
+        <View style={styles.form}>
         <Input
           label="Từ khóa tìm kiếm"
           placeholder="Tìm theo tiêu đề hoặc mô tả..."
@@ -139,14 +161,21 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
           </View>
         </View>
 
-        <Button
-          variant="primary"
-          onPress={handleApply}
-          style={styles.applyButton}
-        >
-          Lọc kết quả
-        </Button>
-      </View>
+          <Button
+            variant="primary"
+            onPress={() => {
+              handleApply();
+              // collapse after applying to save space
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setExpanded(false);
+            }}
+            style={styles.applyButton}
+            fullWidth
+          >
+            Lọc kết quả
+          </Button>
+        </View>
+      )}
     </Card>
   );
 };
@@ -200,6 +229,23 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+    paddingHorizontal: spacing[1],
+  },
+  headerTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  chevron: {
+    fontSize: typography.fontSize.lg,
+    color: colors.text.primary,
+    marginRight: spacing[2],
   },
   priceRow: {
     flexDirection: 'row',

@@ -8,13 +8,13 @@ const db = require('../../config/db');
 /**
  * Get current user profile
  */
-function getCurrentUser(req, res, next) {
+async function getCurrentUser(req, res, next) {
   try {
     const userId = req.user.id;
 
     // Get user data
-    const user = db.prepare('SELECT id, phone, full_name, address, created_at FROM users WHERE id = ?')
-      .get(userId);
+    const userResult = await db.query('SELECT id, phone, full_name, address, created_at FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
 
     if (!user) {
       return res.status(404).json({
@@ -23,12 +23,13 @@ function getCurrentUser(req, res, next) {
     }
 
     // Get user role
-    const userRole = db.prepare(`
+    const userRoleResult = await db.query(`
       SELECT r.name 
       FROM roles r
       JOIN user_roles ur ON r.id = ur.role_id
-      WHERE ur.user_id = ?
-    `).get(userId);
+      WHERE ur.user_id = $1
+    `, [userId]);
+    const userRole = userRoleResult.rows[0];
 
     res.status(200).json({
       id: user.id,
@@ -46,7 +47,7 @@ function getCurrentUser(req, res, next) {
 /**
  * Update current user profile
  */
-function updateCurrentUser(req, res, next) {
+async function updateCurrentUser(req, res, next) {
   try {
     const userId = req.user.id;
     const { fullName, address } = req.body;
@@ -54,14 +55,15 @@ function updateCurrentUser(req, res, next) {
     // Build update query dynamically
     const updates = [];
     const values = [];
+    let paramIndex = 1;
 
     if (fullName !== undefined) {
-      updates.push('full_name = ?');
+      updates.push(`full_name = $${paramIndex++}`);
       values.push(fullName);
     }
 
     if (address !== undefined) {
-      updates.push('address = ?');
+      updates.push(`address = $${paramIndex++}`);
       values.push(address);
     }
 
@@ -73,25 +75,26 @@ function updateCurrentUser(req, res, next) {
     }
 
     // Add updated_at
-    updates.push('updated_at = ?');
+    updates.push(`updated_at = $${paramIndex++}`);
     values.push(Date.now());
-    values.push(userId);
+    values.push(userId); // For WHERE clause
 
     // Update user
-    const updateQuery = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
-    db.prepare(updateQuery).run(...values);
+    const updateQuery = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+    await db.query(updateQuery, values);
 
     // Get updated user data
-    const user = db.prepare('SELECT id, phone, full_name, address, created_at, updated_at FROM users WHERE id = ?')
-      .get(userId);
+    const userResult = await db.query('SELECT id, phone, full_name, address, created_at, updated_at FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
 
     // Get user role
-    const userRole = db.prepare(`
+    const userRoleResult = await db.query(`
       SELECT r.name 
       FROM roles r
       JOIN user_roles ur ON r.id = ur.role_id
-      WHERE ur.user_id = ?
-    `).get(userId);
+      WHERE ur.user_id = $1
+    `, [userId]);
+    const userRole = userRoleResult.rows[0];
 
     res.status(200).json({
       id: user.id,
@@ -111,4 +114,3 @@ module.exports = {
   getCurrentUser,
   updateCurrentUser
 };
-

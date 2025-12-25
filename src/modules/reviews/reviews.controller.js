@@ -8,7 +8,7 @@ const db = require('../../config/db');
 /**
  * Submit a review for a worker (Employer only)
  */
-function submitReview(req, res, next) {
+async function submitReview(req, res, next) {
   try {
     const { jobId } = req.params;
     const { stars, comment } = req.body;
@@ -23,14 +23,14 @@ function submitReview(req, res, next) {
     }
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -56,10 +56,8 @@ function submitReview(req, res, next) {
     }
 
     // Business rule: Cannot review same job twice
-    const existingReview = db.prepare('SELECT * FROM worker_reviews WHERE job_id = ?')
-      .get(parseInt(jobId));
-
-    if (existingReview) {
+    const existingReviewResult = await db.query('SELECT * FROM worker_reviews WHERE job_id = $1', [parseInt(jobId)]);
+    if (existingReviewResult.rows.length > 0) {
       return res.status(400).json({
         error: 'Already reviewed',
         message: 'You have already reviewed this job'
@@ -69,44 +67,42 @@ function submitReview(req, res, next) {
     const now = Date.now();
 
     // Create review and update worker average rating in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Insert review
-      const insertReview = db.prepare(`
+      await client.query(`
         INSERT INTO worker_reviews (
           job_id, worker_id, employer_id, stars, comment, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      insertReview.run(
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [
         parseInt(jobId),
         job.accepted_worker_id,
         employerId,
         stars,
         comment || null,
         now
-      );
+      ]);
 
       // Calculate new average rating for worker
-      const reviews = db.prepare(`
-        SELECT stars FROM worker_reviews WHERE worker_id = ?
-      `).all(job.accepted_worker_id);
+      const reviewsResult = await client.query(`
+        SELECT stars FROM worker_reviews WHERE worker_id = $1
+      `, [job.accepted_worker_id]);
 
-      const avgRating = reviews.length > 0
-        ? (reviews.reduce((sum, r) => sum + r.stars, 0) / reviews.length).toFixed(1)
+      const avgRating = reviewsResult.rows.length > 0
+        ? (reviewsResult.rows.reduce((sum, r) => sum + r.stars, 0) / reviewsResult.rows.length).toFixed(1)
         : stars.toFixed(1);
 
       // Update worker profile average rating
-      db.prepare(`
+      await client.query(`
         UPDATE worker_profiles
-        SET avg_rating = ?
-        WHERE user_id = ?
-      `).run(parseFloat(avgRating), job.accepted_worker_id);
-    })();
+        SET avg_rating = $1
+        WHERE user_id = $2
+      `, [parseFloat(avgRating), job.accepted_worker_id]);
+    });
 
     // Get created review
-    const review = db.prepare('SELECT * FROM worker_reviews WHERE job_id = ?')
-      .get(parseInt(jobId));
+    const reviewResult = await db.query('SELECT * FROM worker_reviews WHERE job_id = $1', [parseInt(jobId)]);
+    const review = reviewResult.rows[0];
 
     res.status(201).json({
       id: review.id,
@@ -119,7 +115,7 @@ function submitReview(req, res, next) {
     });
   } catch (error) {
     // Handle unique constraint violation
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error.code === '23505') { // PostgreSQL unique violation
       return res.status(400).json({
         error: 'Already reviewed',
         message: 'You have already reviewed this job'
@@ -132,14 +128,13 @@ function submitReview(req, res, next) {
 /**
  * Get reviews for a worker
  */
-function getWorkerReviews(req, res, next) {
+async function getWorkerReviews(req, res, next) {
   try {
     const { workerId } = req.params;
 
     // Verify worker exists
-    const worker = db.prepare('SELECT * FROM users WHERE id = ?').get(parseInt(workerId));
-
-    if (!worker) {
+    const workerResult = await db.query('SELECT * FROM users WHERE id = $1', [parseInt(workerId)]);
+    if (workerResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Worker not found'
@@ -147,7 +142,7 @@ function getWorkerReviews(req, res, next) {
     }
 
     // Get reviews with employer info
-    const reviews = db.prepare(`
+    const reviewsResult = await db.query(`
       SELECT 
         wr.*,
         u.phone as employer_phone,
@@ -156,15 +151,15 @@ function getWorkerReviews(req, res, next) {
       FROM worker_reviews wr
       JOIN users u ON wr.employer_id = u.id
       JOIN jobs j ON wr.job_id = j.id
-      WHERE wr.worker_id = ?
+      WHERE wr.worker_id = $1
       ORDER BY wr.created_at DESC
-    `).all(parseInt(workerId));
+    `, [parseInt(workerId)]);
 
     // Get worker profile for average rating
-    const workerProfile = db.prepare('SELECT avg_rating FROM worker_profiles WHERE user_id = ?')
-      .get(parseInt(workerId));
+    const workerProfileResult = await db.query('SELECT avg_rating FROM worker_profiles WHERE user_id = $1', [parseInt(workerId)]);
+    const workerProfile = workerProfileResult.rows[0];
 
-    const formattedReviews = reviews.map(review => ({
+    const formattedReviews = reviewsResult.rows.map(review => ({
       id: review.id,
       jobId: review.job_id,
       jobTitle: review.job_title,
@@ -190,4 +185,3 @@ module.exports = {
   submitReview,
   getWorkerReviews
 };
-

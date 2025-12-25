@@ -60,6 +60,47 @@ function normalizeSkill(skill) {
 }
 
 /**
+ * Helper function to get job with images
+ * Returns images in format expected by frontend: Array<{ type?: string; url: string }>
+ */
+async function getJobWithImages(jobId) {
+  const jobResult = await db.query(`
+    SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
+    FROM jobs j
+    JOIN users u ON j.employer_id = u.id
+    WHERE j.id = $1
+  `, [jobId]);
+  
+  if (jobResult.rows.length === 0) {
+    return null;
+  }
+  const job = jobResult.rows[0];
+
+  const imagesResult = await db.query('SELECT * FROM job_images WHERE job_id = $1 ORDER BY is_primary DESC, id ASC', [jobId]);
+
+  return {
+    id: job.id,
+    employerId: job.employer_id,
+    employerName: job.employer_name,
+    employerPhone: job.employer_phone,
+    title: job.title,
+    description: job.description,
+    price: job.price,
+    address: job.address,
+    requiredSkill: job.required_skill,
+    status: job.status,
+    acceptedWorkerId: job.accepted_worker_id,
+    handoverDeadline: job.handover_deadline,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+    images: imagesResult.rows.map(img => ({
+      type: 'IMAGE',
+      url: img.image_url
+    }))
+  };
+}
+
+/**
  * Create a new job
  */
 async function createJob(req, res, next) {
@@ -124,44 +165,33 @@ async function createJob(req, res, next) {
     const normalizedSkill = normalizeSkill(requiredSkill);
 
     // Create job and images in transaction
-    const result = db.transaction(() => {
+    const jobId = await db.transaction(async (client) => {
       // Insert job
-      const insertJob = db.prepare(`
+      const jobResult = await client.query(`
         INSERT INTO jobs (
           employer_id, title, description, price, address, required_skill,
           status, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, 'CHUA_LAM', ?, ?)
-      `);
-      const jobResult = insertJob.run(
-        employerId,
-        title,
-        description,
-        price,
-        address,
-        normalizedSkill,
-        now,
-        now
-      );
-      const jobId = jobResult.lastInsertRowid;
+        VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8)
+        RETURNING id
+      `, [employerId, title, description, price, address, normalizedSkill, now, now]);
+      const jobId = jobResult.rows[0].id;
 
       // Insert images if provided
       if (finalImages.length > 0) {
-        const insertImage = db.prepare(`
-          INSERT INTO job_images (job_id, image_url, is_primary)
-          VALUES (?, ?, ?)
-        `);
-        
-        finalImages.forEach((imageUrl, index) => {
-          insertImage.run(jobId, imageUrl, index === 0 ? 1 : 0);
-        });
+        for (let index = 0; index < finalImages.length; index++) {
+          await client.query(`
+            INSERT INTO job_images (job_id, image_url, is_primary)
+            VALUES ($1, $2, $3)
+          `, [jobId, finalImages[index], index === 0]);
+        }
       }
 
       return jobId;
-    })();
+    });
 
     // Get created job with images
-    const job = getJobWithImages(result);
+    const job = await getJobWithImages(jobId);
 
     res.status(201).json(job);
   } catch (error) {
@@ -173,7 +203,7 @@ async function createJob(req, res, next) {
 /**
  * Get job by ID
  */
-function getJobById(req, res, next) {
+async function getJobById(req, res, next) {
   try {
     const { jobId } = req.params;
     
@@ -185,7 +215,7 @@ function getJobById(req, res, next) {
       });
     }
     
-    const job = getJobWithImages(parseInt(jobId));
+    const job = await getJobWithImages(parseInt(jobId));
 
     if (!job) {
       return res.status(404).json({
@@ -203,7 +233,7 @@ function getJobById(req, res, next) {
 /**
  * List jobs with filters
  */
-function listJobs(req, res, next) {
+async function listJobs(req, res, next) {
   try {
     const { keyword, category, minPrice, maxPrice } = req.query;
 
@@ -214,57 +244,60 @@ function listJobs(req, res, next) {
       WHERE j.status != 'DA_XONG'
     `;
     const params = [];
+    let paramIndex = 1;
 
     // Apply filters
     if (keyword) {
-      query += ` AND (j.title LIKE ? OR j.description LIKE ?)`;
+      query += ` AND (j.title LIKE $${paramIndex++} OR j.description LIKE $${paramIndex++})`;
       const keywordPattern = `%${keyword}%`;
       params.push(keywordPattern, keywordPattern);
     }
 
     if (category) {
-      query += ` AND j.required_skill = ?`;
+      query += ` AND j.required_skill = $${paramIndex++}`;
       params.push(category);
     }
 
     if (minPrice) {
-      query += ` AND j.price >= ?`;
+      query += ` AND j.price >= $${paramIndex++}`;
       params.push(parseInt(minPrice));
     }
 
     if (maxPrice) {
-      query += ` AND j.price <= ?`;
+      query += ` AND j.price <= $${paramIndex++}`;
       params.push(parseInt(maxPrice));
     }
 
     query += ` ORDER BY j.created_at DESC`;
 
-    const jobs = db.prepare(query).all(...params);
+    const jobsResult = await db.query(query, params);
 
     // Get images for each job
-    const jobsWithImages = jobs.map(job => {
-      const images = db.prepare('SELECT * FROM job_images WHERE job_id = ? ORDER BY is_primary DESC, id ASC').all(job.id);
-      return {
-        id: job.id,
-        employerId: job.employer_id,
-        employerName: job.employer_name,
-        employerPhone: job.employer_phone,
-        title: job.title,
-        description: job.description,
-        price: job.price,
-        address: job.address,
-        requiredSkill: job.required_skill,
-        status: job.status,
-        acceptedWorkerId: job.accepted_worker_id,
-        handoverDeadline: job.handover_deadline,
-        createdAt: job.created_at,
-        updatedAt: job.updated_at,
-        images: images.map(img => ({
-          type: 'IMAGE',
-          url: img.image_url
-        }))
-      };
-    });
+    const jobsWithImages = await Promise.all(
+      jobsResult.rows.map(async (job) => {
+        const imagesResult = await db.query('SELECT * FROM job_images WHERE job_id = $1 ORDER BY is_primary DESC, id ASC', [job.id]);
+        return {
+          id: job.id,
+          employerId: job.employer_id,
+          employerName: job.employer_name,
+          employerPhone: job.employer_phone,
+          title: job.title,
+          description: job.description,
+          price: job.price,
+          address: job.address,
+          requiredSkill: job.required_skill,
+          status: job.status,
+          acceptedWorkerId: job.accepted_worker_id,
+          handoverDeadline: job.handover_deadline,
+          createdAt: job.created_at,
+          updatedAt: job.updated_at,
+          images: imagesResult.rows.map(img => ({
+            type: 'IMAGE',
+            url: img.image_url
+          }))
+        };
+      })
+    );
 
     res.status(200).json(jobsWithImages);
   } catch (error) {
@@ -275,17 +308,19 @@ function listJobs(req, res, next) {
 /**
  * Get jobs posted by current employer
  */
-function getMyJobs(req, res, next) {
+async function getMyJobs(req, res, next) {
   try {
     const employerId = req.user.id;
 
-    const jobs = db.prepare(`
+    const jobsResult = await db.query(`
       SELECT * FROM jobs
-      WHERE employer_id = ?
+      WHERE employer_id = $1
       ORDER BY created_at DESC
-    `).all(employerId);
+    `, [employerId]);
 
-    const jobsWithImages = jobs.map(job => getJobWithImages(job.id));
+    const jobsWithImages = await Promise.all(
+      jobsResult.rows.map(job => getJobWithImages(job.id))
+    );
 
     res.status(200).json(jobsWithImages);
   } catch (error) {
@@ -304,14 +339,14 @@ async function updateJob(req, res, next) {
     const employerId = req.user.id;
 
     // Get existing job
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     // Check ownership
     if (job.employer_id !== employerId) {
@@ -351,13 +386,14 @@ async function updateJob(req, res, next) {
     // Build update query
     const updates = [];
     const values = [];
+    let paramIndex = 1;
 
     if (title !== undefined) {
-      updates.push('title = ?');
+      updates.push(`title = $${paramIndex++}`);
       values.push(title);
     }
     if (description !== undefined) {
-      updates.push('description = ?');
+      updates.push(`description = $${paramIndex++}`);
       values.push(description);
     }
     if (price !== undefined) {
@@ -367,44 +403,37 @@ async function updateJob(req, res, next) {
           message: 'Price must be greater than 0'
         });
       }
-      updates.push('price = ?');
+      updates.push(`price = $${paramIndex++}`);
       values.push(price);
     }
     if (address !== undefined) {
-      updates.push('address = ?');
+      updates.push(`address = $${paramIndex++}`);
       values.push(address);
     }
     if (requiredSkill !== undefined) {
       // Normalize skill to ensure it matches one of the fixed skill values
       const normalizedSkill = normalizeSkill(requiredSkill);
-      updates.push('required_skill = ?');
+      updates.push(`required_skill = $${paramIndex++}`);
       values.push(normalizedSkill);
     }
 
     const now = Date.now();
-    updates.push('updated_at = ?');
+    updates.push(`updated_at = $${paramIndex++}`);
     values.push(now);
+    values.push(parseInt(jobId)); // For WHERE clause
 
     // Update job and images in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Update job fields if any
       if (updates.length > 0) {
-        values.push(parseInt(jobId));
-        const updateQuery = `UPDATE jobs SET ${updates.join(', ')} WHERE id = ?`;
-        db.prepare(updateQuery).run(...values);
+        const updateQuery = `UPDATE jobs SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+        await client.query(updateQuery, values);
       }
 
       // Update images if provided or uploaded
       if (s3ImageUrls.length > 0 || images !== undefined) {
         // Clear existing images first if we're replacing them
-        // In a real app, you might want to only add new ones or delete specific ones
-        // For MVP, if images or files are provided, we replace all images
-        db.prepare('DELETE FROM job_images WHERE job_id = ?').run(parseInt(jobId));
-
-        const insertImage = db.prepare(`
-          INSERT INTO job_images (job_id, image_url, is_primary)
-          VALUES (?, ?, ?)
-        `);
+        await client.query('DELETE FROM job_images WHERE job_id = $1', [parseInt(jobId)]);
 
         // Use new S3 URLs first
         let finalImages = s3ImageUrls;
@@ -414,14 +443,17 @@ async function updateJob(req, res, next) {
           finalImages = Array.isArray(images) ? images : [images];
         }
 
-        finalImages.forEach((imageUrl, index) => {
-          insertImage.run(parseInt(jobId), imageUrl, index === 0 ? 1 : 0);
-        });
+        for (let index = 0; index < finalImages.length; index++) {
+          await client.query(`
+            INSERT INTO job_images (job_id, image_url, is_primary)
+            VALUES ($1, $2, $3)
+          `, [parseInt(jobId), finalImages[index], index === 0]);
+        }
       }
-    })();
+    });
 
     // Get updated job
-    const updatedJob = getJobWithImages(parseInt(jobId));
+    const updatedJob = await getJobWithImages(parseInt(jobId));
 
     res.status(200).json(updatedJob);
   } catch (error) {
@@ -433,20 +465,20 @@ async function updateJob(req, res, next) {
 /**
  * Delete a job
  */
-function deleteJob(req, res, next) {
+async function deleteJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const employerId = req.user.id;
 
     // Get existing job
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     // Check ownership
     if (job.employer_id !== employerId) {
@@ -473,7 +505,7 @@ function deleteJob(req, res, next) {
     }
 
     // Delete job (cascade will delete images)
-    db.prepare('DELETE FROM jobs WHERE id = ?').run(parseInt(jobId));
+    await db.query('DELETE FROM jobs WHERE id = $1', [parseInt(jobId)]);
 
     res.status(200).json({
       message: 'Job deleted successfully'
@@ -486,19 +518,18 @@ function deleteJob(req, res, next) {
 /**
  * Get job status
  */
-function getJobStatus(req, res, next) {
+async function getJobStatus(req, res, next) {
   try {
     const { jobId } = req.params;
 
-    const job = db.prepare('SELECT id, status, accepted_worker_id FROM jobs WHERE id = ?')
-      .get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT id, status, accepted_worker_id FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     res.status(200).json({
       jobId: job.id,
@@ -513,20 +544,20 @@ function getJobStatus(req, res, next) {
 /**
  * Complete a job
  */
-function completeJob(req, res, next) {
+async function completeJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const employerId = req.user.id;
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -554,30 +585,30 @@ function completeJob(req, res, next) {
     const now = Date.now();
 
     // Update job status and log change in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Update job status
-      db.prepare(`
+      await client.query(`
         UPDATE jobs 
         SET status = 'DA_XONG',
-            updated_at = ?
-        WHERE id = ?
-      `).run(now, parseInt(jobId));
+            updated_at = $1
+        WHERE id = $2
+      `, [now, parseInt(jobId)]);
 
       // Create status log
-      db.prepare(`
+      await client.query(`
         INSERT INTO job_status_logs (job_id, old_status, new_status, changed_by, changed_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
         parseInt(jobId),
         job.status,
         'DA_XONG',
         employerId,
         now
-      );
-    })();
+      ]);
+    });
 
     // Get updated job
-    const updatedJob = getJobWithImages(parseInt(jobId));
+    const updatedJob = await getJobWithImages(parseInt(jobId));
 
     res.status(200).json(updatedJob);
   } catch (error) {
@@ -588,20 +619,20 @@ function completeJob(req, res, next) {
 /**
  * Reset job status from DANG_BAN_GIAO to CHUA_LAM
  */
-function resetJob(req, res, next) {
+async function resetJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const employerId = req.user.id;
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -621,77 +652,37 @@ function resetJob(req, res, next) {
     const now = Date.now();
 
     // Reset job status and log change in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Update job status and clear accepted worker
-      db.prepare(`
+      await client.query(`
         UPDATE jobs 
         SET status = 'CHUA_LAM',
             accepted_worker_id = NULL,
             handover_deadline = NULL,
-            updated_at = ?
-        WHERE id = ?
-      `).run(now, parseInt(jobId));
+            updated_at = $1
+        WHERE id = $2
+      `, [now, parseInt(jobId)]);
 
       // Create status log
-      db.prepare(`
+      await client.query(`
         INSERT INTO job_status_logs (job_id, old_status, new_status, changed_by, changed_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
         parseInt(jobId),
         job.status,
         'CHUA_LAM',
         employerId,
         now
-      );
-    })();
+      ]);
+    });
 
     // Get updated job
-    const updatedJob = getJobWithImages(parseInt(jobId));
+    const updatedJob = await getJobWithImages(parseInt(jobId));
 
     res.status(200).json(updatedJob);
   } catch (error) {
     next(error);
   }
-}
-
-/**
- * Helper function to get job with images
- * Returns images in format expected by frontend: Array<{ type?: string; url: string }>
- */
-function getJobWithImages(jobId) {
-  const job = db.prepare(`
-    SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
-    FROM jobs j
-    JOIN users u ON j.employer_id = u.id
-    WHERE j.id = ?
-  `).get(jobId);
-  
-  if (!job) {
-    return null;
-  }
-
-  const images = db.prepare('SELECT * FROM job_images WHERE job_id = ? ORDER BY is_primary DESC, id ASC').all(jobId);
-
-  return {
-    id: job.id,
-    employerId: job.employer_id,
-    employerName: job.employer_name,
-    employerPhone: job.employer_phone,
-    title: job.title,
-    description: job.description,
-    price: job.price,
-    address: job.address,
-    requiredSkill: job.required_skill,
-    status: job.status,
-    acceptedWorkerId: job.accepted_worker_id,
-    handoverDeadline: job.handover_deadline,
-    createdAt: job.created_at,
-    updatedAt: job.updated_at,
-    images: images.map(img => ({
-      type: 'IMAGE',
-      url: img.image_url
-    }))
-  };
 }
 
 module.exports = {
@@ -705,4 +696,3 @@ module.exports = {
   completeJob,
   resetJob
 };
-

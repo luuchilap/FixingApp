@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key-change-in-producti
 /**
  * Verify JWT token and attach user to request
  */
-function authenticateToken(req, res, next) {
+async function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -26,8 +26,8 @@ function authenticateToken(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     
     // Verify user still exists
-    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(decoded.userId);
-    if (!user) {
+    const result = await db.query('SELECT id FROM users WHERE id = $1', [decoded.userId]);
+    if (result.rows.length === 0) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'User not found'
@@ -83,4 +83,3 @@ module.exports = {
   authenticateToken,
   requireRole
 };
-

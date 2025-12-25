@@ -8,27 +8,27 @@ const db = require('../../config/db');
 /**
  * Get user's notifications
  */
-function getNotifications(req, res, next) {
+async function getNotifications(req, res, next) {
   try {
     const userId = req.user.id;
     const { unreadOnly } = req.query;
 
-    let query = 'SELECT * FROM notifications WHERE user_id = ?';
+    let query = 'SELECT * FROM notifications WHERE user_id = $1';
     const params = [userId];
 
     if (unreadOnly === 'true') {
-      query += ' AND is_read = 0';
+      query += ' AND is_read = FALSE';
     }
 
     query += ' ORDER BY created_at DESC LIMIT 50';
 
-    const notifications = db.prepare(query).all(...params);
+    const notificationsResult = await db.query(query, params);
 
-    const formattedNotifications = notifications.map(notif => ({
+    const formattedNotifications = notificationsResult.rows.map(notif => ({
       id: notif.id,
       userId: notif.user_id,
       content: notif.content,
-      isRead: notif.is_read === 1,
+      isRead: notif.is_read === true,
       createdAt: notif.created_at
     }));
 
@@ -41,21 +41,20 @@ function getNotifications(req, res, next) {
 /**
  * Mark notification as read
  */
-function markAsRead(req, res, next) {
+async function markAsRead(req, res, next) {
   try {
     const { notificationId } = req.params;
     const userId = req.user.id;
 
     // Get notification and verify ownership
-    const notification = db.prepare('SELECT * FROM notifications WHERE id = ?')
-      .get(parseInt(notificationId));
-
-    if (!notification) {
+    const notificationResult = await db.query('SELECT * FROM notifications WHERE id = $1', [parseInt(notificationId)]);
+    if (notificationResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Notification not found'
       });
     }
+    const notification = notificationResult.rows[0];
 
     if (notification.user_id !== userId) {
       return res.status(403).json({
@@ -65,8 +64,7 @@ function markAsRead(req, res, next) {
     }
 
     // Update notification
-    db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?')
-      .run(parseInt(notificationId));
+    await db.query('UPDATE notifications SET is_read = TRUE WHERE id = $1', [parseInt(notificationId)]);
 
     res.status(200).json({
       message: 'Notification marked as read'
@@ -79,12 +77,12 @@ function markAsRead(req, res, next) {
 /**
  * Helper function to send notification to a user
  */
-function sendNotification(userId, content) {
+async function sendNotification(userId, content) {
   const now = Date.now();
-  db.prepare(`
+  await db.query(`
     INSERT INTO notifications (user_id, content, is_read, created_at)
-    VALUES (?, ?, 0, ?)
-  `).run(userId, content, now);
+    VALUES ($1, $2, FALSE, $3)
+  `, [userId, content, now]);
 }
 
 module.exports = {
@@ -92,4 +90,3 @@ module.exports = {
   markAsRead,
   sendNotification
 };
-

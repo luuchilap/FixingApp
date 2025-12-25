@@ -151,20 +151,20 @@ const sampleCertificates = [
 /**
  * Get role ID by name
  */
-function getRoleId(roleName) {
-  const role = db.prepare('SELECT id FROM roles WHERE name = ?').get(roleName);
-  if (!role) {
+async function getRoleId(roleName) {
+  const roleResult = await db.query('SELECT id FROM roles WHERE name = $1', [roleName]);
+  if (roleResult.rows.length === 0) {
     throw new Error(`Role ${roleName} not found`);
   }
-  return role.id;
+  return roleResult.rows[0].id;
 }
 
 /**
  * Get user ID by phone
  */
-function getUserIdByPhone(phone) {
-  const user = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone);
-  return user ? user.id : null;
+async function getUserIdByPhone(phone) {
+  const userResult = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+  return userResult.rows.length > 0 ? userResult.rows[0].id : null;
 }
 
 /**
@@ -204,42 +204,37 @@ function normalizeSkill(skill) {
 /**
  * Create a user with role and profile
  */
-function createUser(userData) {
+async function createUser(userData) {
   const { phone, password, fullName, address, role, skill } = userData;
   
   // Check if user already exists
-  const existingUser = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone);
-  if (existingUser) {
+  const existingUserId = await getUserIdByPhone(phone);
+  if (existingUserId) {
     console.log(`  ⚠ User ${phone} already exists, skipping...`);
-    return existingUser.id;
+    return existingUserId;
   }
 
-  const passwordHash = bcrypt.hashSync(password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
   const now = Date.now();
-  const roleId = getRoleId(role);
+  const roleId = await getRoleId(role);
 
   // Insert user
-  const insertUser = db.prepare(`
+  const userResult = await db.query(`
     INSERT INTO users (phone, password_hash, full_name, address, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  const userResult = insertUser.run(phone, passwordHash, fullName, address, now, now);
-  const userId = userResult.lastInsertRowid;
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id
+  `, [phone, passwordHash, fullName, address, now, now]);
+  const userId = userResult.rows[0].id;
 
   // Assign role
-  const assignRole = db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)');
-  assignRole.run(userId, roleId);
+  await db.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
 
   // Create profile
   if (role === 'EMPLOYER') {
-    const createProfile = db.prepare('INSERT INTO employer_profiles (user_id) VALUES (?)');
-    createProfile.run(userId);
+    await db.query('INSERT INTO employer_profiles (user_id) VALUES ($1)', [userId]);
   } else if (role === 'WORKER') {
-    const createProfile = db.prepare(`
-      INSERT INTO worker_profiles (user_id, skill) VALUES (?, ?)
-    `);
     const normalizedSkill = normalizeSkill(skill);
-    createProfile.run(userId, normalizedSkill);
+    await db.query('INSERT INTO worker_profiles (user_id, skill) VALUES ($1, $2)', [userId, normalizedSkill]);
   }
 
   console.log(`  ✓ Created ${role} user: ${fullName} (${phone})`);
@@ -249,10 +244,10 @@ function createUser(userData) {
 /**
  * Create a job
  */
-function createJob(jobData) {
+async function createJob(jobData) {
   const { employerPhone, title, description, price, address, requiredSkill, status } = jobData;
   
-  const employerId = getUserIdByPhone(employerPhone);
+  const employerId = await getUserIdByPhone(employerPhone);
   if (!employerId) {
     console.log(`  ⚠ Employer ${employerPhone} not found, skipping job: ${title}`);
     return null;
@@ -261,18 +256,17 @@ function createJob(jobData) {
   const now = Date.now();
   const handoverDeadline = status === 'DANG_BAN_GIAO' ? now + (30 * 24 * 60 * 60 * 1000) : null;
 
-  const insertJob = db.prepare(`
+  // Normalize skill to ensure it matches one of the fixed skill values
+  const normalizedSkill = normalizeSkill(requiredSkill);
+  
+  const result = await db.query(`
     INSERT INTO jobs (
       employer_id, title, description, price, address, required_skill,
       status, handover_deadline, created_at, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  // Normalize skill to ensure it matches one of the fixed skill values
-  const normalizedSkill = normalizeSkill(requiredSkill);
-  
-  const result = insertJob.run(
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING id
+  `, [
     employerId,
     title,
     description,
@@ -283,65 +277,74 @@ function createJob(jobData) {
     handoverDeadline,
     now,
     now
-  );
+  ]);
 
   console.log(`  ✓ Created job: ${title}`);
-  return result.lastInsertRowid;
+  return result.rows[0].id;
 }
 
 /**
  * Create a certificate
  */
-function createCertificate(certData) {
+async function createCertificate(certData) {
   const { workerPhone, imageUrl, status } = certData;
   
-  const workerId = getUserIdByPhone(workerPhone);
+  const workerId = await getUserIdByPhone(workerPhone);
   if (!workerId) {
     console.log(`  ⚠ Worker ${workerPhone} not found, skipping certificate`);
     return null;
   }
 
-  const reviewedBy = status === 'APPROVED' ? getUserIdByPhone('0999999999') : null;
+  const reviewedBy = status === 'APPROVED' ? await getUserIdByPhone('0999999999') : null;
   const reviewedAt = status === 'APPROVED' ? Date.now() : null;
 
-  const insertCert = db.prepare(`
+  const result = await db.query(`
     INSERT INTO worker_certificates (worker_id, image_url, status, reviewed_by, reviewed_at)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-
-  const result = insertCert.run(workerId, imageUrl, status, reviewedBy, reviewedAt);
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id
+  `, [workerId, imageUrl, status, reviewedBy, reviewedAt]);
 
   // Update worker profile if approved
   if (status === 'APPROVED') {
-    db.prepare('UPDATE worker_profiles SET is_verified = 1 WHERE user_id = ?').run(workerId);
+    await db.query('UPDATE worker_profiles SET is_verified = TRUE WHERE user_id = $1', [workerId]);
   }
 
   console.log(`  ✓ Created certificate for worker ${workerPhone} (${status})`);
-  return result.lastInsertRowid;
+  return result.rows[0].id;
 }
 
 /**
  * Main seed function
  */
-function seed() {
+async function seed() {
   console.log('🌱 Starting database seed...\n');
 
   try {
     // Create users
     console.log('Creating users...');
-    sampleAdmins.forEach(createUser);
-    sampleEmployers.forEach(createUser);
-    sampleWorkers.forEach(createUser);
+    for (const admin of sampleAdmins) {
+      await createUser(admin);
+    }
+    for (const employer of sampleEmployers) {
+      await createUser(employer);
+    }
+    for (const worker of sampleWorkers) {
+      await createUser(worker);
+    }
     console.log('');
 
     // Create jobs
     console.log('Creating jobs...');
-    sampleJobs.forEach(createJob);
+    for (const job of sampleJobs) {
+      await createJob(job);
+    }
     console.log('');
 
     // Create certificates
     console.log('Creating certificates...');
-    sampleCertificates.forEach(createCertificate);
+    for (const cert of sampleCertificates) {
+      await createCertificate(cert);
+    }
     console.log('');
 
     console.log('✅ Database seed completed successfully!');
@@ -361,14 +364,18 @@ function seed() {
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;
+  } finally {
+    // Close database connection pool
+    await db.pool.end();
   }
 }
 
 // Run seed if this file is executed directly
 if (require.main === module) {
-  seed();
-  db.close();
+  seed().catch((error) => {
+    console.error('Seed failed:', error);
+    process.exit(1);
+  });
 }
 
 module.exports = { seed };
-

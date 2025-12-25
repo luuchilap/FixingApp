@@ -9,7 +9,7 @@ const db = require('../../config/db');
  * List workers with filters (for employers)
  * Only accessible by employers
  */
-function listWorkers(req, res, next) {
+async function listWorkers(req, res, next) {
   try {
     const { skill, address } = req.query;
 
@@ -31,31 +31,32 @@ function listWorkers(req, res, next) {
       WHERE r.name = 'WORKER'
     `;
     const params = [];
+    let paramIndex = 1;
 
     // Apply filters
     if (skill) {
-      query += ` AND wp.skill = ?`;
+      query += ` AND wp.skill = $${paramIndex++}`;
       params.push(skill);
     }
 
     if (address) {
-      query += ` AND u.address LIKE ?`;
+      query += ` AND u.address LIKE $${paramIndex++}`;
       params.push(`%${address}%`);
     }
 
     query += ` ORDER BY u.created_at DESC`;
 
-    const workers = db.prepare(query).all(...params);
+    const workersResult = await db.query(query, params);
 
     // Format response
-    const formattedWorkers = workers.map(worker => ({
+    const formattedWorkers = workersResult.rows.map(worker => ({
       id: worker.id,
       phone: worker.phone,
       fullName: worker.full_name,
       address: worker.address,
       skill: worker.skill,
       avgRating: worker.avg_rating || 0,
-      isVerified: worker.is_verified === 1,
+      isVerified: worker.is_verified === true,
       createdAt: worker.created_at
     }));
 
@@ -69,11 +70,11 @@ function listWorkers(req, res, next) {
 /**
  * Get worker details by ID (for employers)
  */
-function getWorkerById(req, res, next) {
+async function getWorkerById(req, res, next) {
   try {
     const { workerId } = req.params;
 
-    const worker = db.prepare(`
+    const workerResult = await db.query(`
       SELECT 
         u.id,
         u.phone,
@@ -87,23 +88,24 @@ function getWorkerById(req, res, next) {
       INNER JOIN user_roles ur ON u.id = ur.user_id
       INNER JOIN roles r ON ur.role_id = r.id
       LEFT JOIN worker_profiles wp ON u.id = wp.user_id
-      WHERE r.name = 'WORKER' AND u.id = ?
-    `).get(parseInt(workerId));
+      WHERE r.name = 'WORKER' AND u.id = $1
+    `, [parseInt(workerId)]);
 
-    if (!worker) {
+    if (workerResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Worker not found'
       });
     }
+    const worker = workerResult.rows[0];
 
     // Get worker certificates
-    const certificates = db.prepare(`
+    const certificatesResult = await db.query(`
       SELECT id, image_url, status, reviewed_at
       FROM worker_certificates
-      WHERE worker_id = ? AND status = 'APPROVED'
+      WHERE worker_id = $1 AND status = 'APPROVED'
       ORDER BY reviewed_at DESC
-    `).all(parseInt(workerId));
+    `, [parseInt(workerId)]);
 
     // Format response
     const formattedWorker = {
@@ -113,9 +115,9 @@ function getWorkerById(req, res, next) {
       address: worker.address,
       skill: worker.skill,
       avgRating: worker.avg_rating || 0,
-      isVerified: worker.is_verified === 1,
+      isVerified: worker.is_verified === true,
       createdAt: worker.created_at,
-      certificates: certificates.map(cert => ({
+      certificates: certificatesResult.rows.map(cert => ({
         id: cert.id,
         imageUrl: cert.image_url,
         status: cert.status,
@@ -134,4 +136,3 @@ module.exports = {
   listWorkers,
   getWorkerById
 };
-

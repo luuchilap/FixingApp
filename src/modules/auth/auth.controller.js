@@ -78,8 +78,8 @@ async function registerEmployer(req, res, next) {
     }
 
     // Check if phone already exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone);
-    if (existingUser) {
+    const existingUserResult = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    if (existingUserResult.rows.length > 0) {
       return res.status(400).json({
         error: 'Phone number already registered'
       });
@@ -89,35 +89,34 @@ async function registerEmployer(req, res, next) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Get EMPLOYER role ID
-    const role = db.prepare('SELECT id FROM roles WHERE name = ?').get('EMPLOYER');
-    if (!role) {
+    const roleResult = await db.query('SELECT id FROM roles WHERE name = $1', ['EMPLOYER']);
+    if (roleResult.rows.length === 0) {
       return res.status(500).json({
         error: 'System error: EMPLOYER role not found'
       });
     }
+    const role = roleResult.rows[0];
 
     const now = Date.now();
 
     // Create user and profile in transaction
-    const result = db.transaction(() => {
+    const result = await db.transaction(async (client) => {
       // Insert user
-      const insertUser = db.prepare(`
+      const userResult = await client.query(`
         INSERT INTO users (phone, password_hash, full_name, address, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      const userResult = insertUser.run(phone, passwordHash, fullName, address || null, now, now);
-      const userId = userResult.lastInsertRowid;
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `, [phone, passwordHash, fullName, address || null, now, now]);
+      const userId = userResult.rows[0].id;
 
       // Assign role
-      const assignRole = db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)');
-      assignRole.run(userId, role.id);
+      await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, role.id]);
 
       // Create employer profile
-      const createProfile = db.prepare('INSERT INTO employer_profiles (user_id) VALUES (?)');
-      createProfile.run(userId);
+      await client.query('INSERT INTO employer_profiles (user_id) VALUES ($1)', [userId]);
 
       return { userId, roleName: 'EMPLOYER' };
-    })();
+    });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -127,8 +126,8 @@ async function registerEmployer(req, res, next) {
     );
 
     // Get user data
-    const user = db.prepare('SELECT id, phone, full_name, address, created_at FROM users WHERE id = ?')
-      .get(result.userId);
+    const userResult = await db.query('SELECT id, phone, full_name, address, created_at FROM users WHERE id = $1', [result.userId]);
+    const user = userResult.rows[0];
 
     res.status(201).json({
       token,
@@ -162,8 +161,8 @@ async function registerWorker(req, res, next) {
     }
 
     // Check if phone already exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone);
-    if (existingUser) {
+    const existingUserResult = await db.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    if (existingUserResult.rows.length > 0) {
       return res.status(400).json({
         error: 'Phone number already registered'
       });
@@ -173,37 +172,36 @@ async function registerWorker(req, res, next) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Get WORKER role ID
-    const role = db.prepare('SELECT id FROM roles WHERE name = ?').get('WORKER');
-    if (!role) {
+    const roleResult = await db.query('SELECT id FROM roles WHERE name = $1', ['WORKER']);
+    if (roleResult.rows.length === 0) {
       return res.status(500).json({
         error: 'System error: WORKER role not found'
       });
     }
+    const role = roleResult.rows[0];
 
     const now = Date.now();
 
     // Create user and profile in transaction
-    const result = db.transaction(() => {
+    const result = await db.transaction(async (client) => {
       // Insert user
-      const insertUser = db.prepare(`
+      const userResult = await client.query(`
         INSERT INTO users (phone, password_hash, full_name, address, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      const userResult = insertUser.run(phone, passwordHash, fullName, address || null, now, now);
-      const userId = userResult.lastInsertRowid;
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `, [phone, passwordHash, fullName, address || null, now, now]);
+      const userId = userResult.rows[0].id;
 
       // Assign role
-      const assignRole = db.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)');
-      assignRole.run(userId, role.id);
+      await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, role.id]);
 
       // Create worker profile
-      const createProfile = db.prepare('INSERT INTO worker_profiles (user_id, skill) VALUES (?, ?)');
       // Normalize skill to ensure it matches one of the fixed skill values
       const normalizedSkill = normalizeSkill(skill);
-      createProfile.run(userId, normalizedSkill);
+      await client.query('INSERT INTO worker_profiles (user_id, skill) VALUES ($1, $2)', [userId, normalizedSkill]);
 
       return { userId, roleName: 'WORKER' };
-    })();
+    });
 
     // Generate JWT token
     const token = jwt.sign(
@@ -213,8 +211,8 @@ async function registerWorker(req, res, next) {
     );
 
     // Get user data
-    const user = db.prepare('SELECT id, phone, full_name, address, created_at FROM users WHERE id = ?')
-      .get(result.userId);
+    const userResult = await db.query('SELECT id, phone, full_name, address, created_at FROM users WHERE id = $1', [result.userId]);
+    const user = userResult.rows[0];
 
     res.status(201).json({
       token,
@@ -248,12 +246,13 @@ async function login(req, res, next) {
     }
 
     // Find user
-    const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone);
-    if (!user) {
+    const userResult = await db.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    if (userResult.rows.length === 0) {
       return res.status(401).json({
         error: 'Invalid credentials'
       });
     }
+    const user = userResult.rows[0];
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -264,18 +263,19 @@ async function login(req, res, next) {
     }
 
     // Get user role
-    const userRole = db.prepare(`
+    const userRoleResult = await db.query(`
       SELECT r.name 
       FROM roles r
       JOIN user_roles ur ON r.id = ur.role_id
-      WHERE ur.user_id = ?
-    `).get(user.id);
+      WHERE ur.user_id = $1
+    `, [user.id]);
 
-    if (!userRole) {
+    if (userRoleResult.rows.length === 0) {
       return res.status(500).json({
         error: 'System error: User role not found'
       });
     }
+    const userRole = userRoleResult.rows[0];
 
     // Generate JWT token
     const token = jwt.sign(
@@ -317,4 +317,3 @@ module.exports = {
   login,
   logout
 };
-

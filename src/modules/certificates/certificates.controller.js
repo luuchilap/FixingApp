@@ -8,7 +8,7 @@ const db = require('../../config/db');
 /**
  * Submit a certificate (Worker only)
  */
-function submitCertificate(req, res, next) {
+async function submitCertificate(req, res, next) {
   try {
     const { imageUrl } = req.body;
     const workerId = req.user.id;
@@ -22,18 +22,14 @@ function submitCertificate(req, res, next) {
     }
 
     // Insert certificate
-    const insertCertificate = db.prepare(`
+    const result = await db.query(`
       INSERT INTO worker_certificates (
         worker_id, image_url, status
       )
-      VALUES (?, ?, 'PENDING')
-    `);
-
-    const result = insertCertificate.run(workerId, imageUrl);
-
-    // Get created certificate
-    const certificate = db.prepare('SELECT * FROM worker_certificates WHERE id = ?')
-      .get(result.lastInsertRowid);
+      VALUES ($1, $2, 'PENDING')
+      RETURNING *
+    `, [workerId, imageUrl]);
+    const certificate = result.rows[0];
 
     res.status(201).json({
       id: certificate.id,
@@ -49,25 +45,25 @@ function submitCertificate(req, res, next) {
 /**
  * Get worker's certificate status
  */
-function getCertificateStatus(req, res, next) {
+async function getCertificateStatus(req, res, next) {
   try {
     const workerId = req.user.id;
 
-    const certificates = db.prepare(`
+    const certificatesResult = await db.query(`
       SELECT * FROM worker_certificates
-      WHERE worker_id = ?
+      WHERE worker_id = $1
       ORDER BY id DESC
-    `).all(workerId);
+    `, [workerId]);
 
     // Get worker profile to check verification status
-    const workerProfile = db.prepare('SELECT is_verified FROM worker_profiles WHERE user_id = ?')
-      .get(workerId);
+    const workerProfileResult = await db.query('SELECT is_verified FROM worker_profiles WHERE user_id = $1', [workerId]);
+    const workerProfile = workerProfileResult.rows[0];
 
     // Check if worker has at least one approved certificate
-    const hasApprovedCert = certificates.some(cert => cert.status === 'APPROVED');
+    const hasApprovedCert = certificatesResult.rows.some(cert => cert.status === 'APPROVED');
 
     // Return all certificates with their status
-    const formattedCertificates = certificates.map(cert => ({
+    const formattedCertificates = certificatesResult.rows.map(cert => ({
       id: cert.id,
       workerId: cert.worker_id,
       imageUrl: cert.image_url,
@@ -77,7 +73,7 @@ function getCertificateStatus(req, res, next) {
     }));
 
     // isVerified is true if profile says so OR if there's an approved certificate
-    const isVerified = (workerProfile && workerProfile.is_verified === 1) || hasApprovedCert;
+    const isVerified = (workerProfile && workerProfile.is_verified === true) || hasApprovedCert;
 
     res.status(200).json({
       certificates: formattedCertificates,
@@ -91,9 +87,9 @@ function getCertificateStatus(req, res, next) {
 /**
  * Get all pending certificates (Admin only)
  */
-function getPendingCertificates(req, res, next) {
+async function getPendingCertificates(req, res, next) {
   try {
-    const certificates = db.prepare(`
+    const certificatesResult = await db.query(`
       SELECT 
         wc.*,
         u.phone as worker_phone,
@@ -104,9 +100,9 @@ function getPendingCertificates(req, res, next) {
       LEFT JOIN worker_profiles wp ON u.id = wp.user_id
       WHERE wc.status = 'PENDING'
       ORDER BY wc.id ASC
-    `).all();
+    `);
 
-    const formattedCertificates = certificates.map(cert => ({
+    const formattedCertificates = certificatesResult.rows.map(cert => ({
       id: cert.id,
       workerId: cert.worker_id,
       workerPhone: cert.worker_phone,
@@ -125,22 +121,21 @@ function getPendingCertificates(req, res, next) {
 /**
  * Verify a certificate (Admin only)
  */
-function verifyCertificate(req, res, next) {
+async function verifyCertificate(req, res, next) {
   try {
     const { certificateId } = req.params;
     const { approved } = req.body;
     const adminId = req.user.id;
 
     // Get certificate
-    const certificate = db.prepare('SELECT * FROM worker_certificates WHERE id = ?')
-      .get(parseInt(certificateId));
-
-    if (!certificate) {
+    const certificateResult = await db.query('SELECT * FROM worker_certificates WHERE id = $1', [parseInt(certificateId)]);
+    if (certificateResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Certificate not found'
       });
     }
+    const certificate = certificateResult.rows[0];
 
     // Business rule: Can only verify pending certificates
     if (certificate.status !== 'PENDING') {
@@ -154,37 +149,37 @@ function verifyCertificate(req, res, next) {
     const newStatus = approved ? 'APPROVED' : 'REJECTED';
 
     // Update certificate and worker profile in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Update certificate
-      db.prepare(`
+      await client.query(`
         UPDATE worker_certificates
-        SET status = ?,
-            reviewed_by = ?,
-            reviewed_at = ?
-        WHERE id = ?
-      `).run(newStatus, adminId, now, parseInt(certificateId));
+        SET status = $1,
+            reviewed_by = $2,
+            reviewed_at = $3
+        WHERE id = $4
+      `, [newStatus, adminId, now, parseInt(certificateId)]);
 
       // If approved, update worker profile verification status
       if (approved) {
         // Update worker profile is_verified to true
-        db.prepare(`
+        await client.query(`
           UPDATE worker_profiles
-          SET is_verified = 1
-          WHERE user_id = ?
-        `).run(certificate.worker_id);
+          SET is_verified = TRUE
+          WHERE user_id = $1
+        `, [certificate.worker_id]);
       } else {
         // If rejected, set is_verified to false
-        db.prepare(`
+        await client.query(`
           UPDATE worker_profiles
-          SET is_verified = 0
-          WHERE user_id = ?
-        `).run(certificate.worker_id);
+          SET is_verified = FALSE
+          WHERE user_id = $1
+        `, [certificate.worker_id]);
       }
-    })();
+    });
 
     // Get updated certificate
-    const updatedCertificate = db.prepare('SELECT * FROM worker_certificates WHERE id = ?')
-      .get(parseInt(certificateId));
+    const updatedCertificateResult = await db.query('SELECT * FROM worker_certificates WHERE id = $1', [parseInt(certificateId)]);
+    const updatedCertificate = updatedCertificateResult.rows[0];
 
     res.status(200).json({
       id: updatedCertificate.id,
@@ -205,4 +200,3 @@ module.exports = {
   getPendingCertificates,
   verifyCertificate
 };
-

@@ -6,9 +6,40 @@
 const db = require('../../config/db');
 
 /**
+ * Helper function to get complaint with evidences
+ */
+async function getComplaintWithEvidences(complaintId) {
+  const complaintResult = await db.query('SELECT * FROM complaints WHERE id = $1', [complaintId]);
+  if (complaintResult.rows.length === 0) {
+    return null;
+  }
+  const complaint = complaintResult.rows[0];
+
+  const evidencesResult = await db.query(`
+    SELECT * FROM complaint_evidences WHERE complaint_id = $1
+  `, [complaintId]);
+
+  return {
+    id: complaint.id,
+    jobId: complaint.job_id,
+    createdBy: complaint.created_by,
+    reason: complaint.reason,
+    status: complaint.status,
+    decision: complaint.decision,
+    resolvedBy: complaint.resolved_by,
+    resolvedAt: complaint.resolved_at,
+    evidences: evidencesResult.rows.map(ev => ({
+      id: ev.id,
+      evidenceType: ev.evidence_type,
+      evidenceUrl: ev.evidence_url
+    }))
+  };
+}
+
+/**
  * File a complaint
  */
-function fileComplaint(req, res, next) {
+async function fileComplaint(req, res, next) {
   try {
     const { jobId, reason, evidences } = req.body;
     const createdBy = req.user.id;
@@ -22,14 +53,14 @@ function fileComplaint(req, res, next) {
     }
 
     // Get job
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     // Business rule: User must be involved in the job (employer or accepted worker)
     if (job.employer_id !== createdBy && job.accepted_worker_id !== createdBy) {
@@ -42,46 +73,36 @@ function fileComplaint(req, res, next) {
     const now = Date.now();
 
     // Create complaint and evidences in transaction
-    db.transaction(() => {
+    const complaintId = await db.transaction(async (client) => {
       // Insert complaint
-      const insertComplaint = db.prepare(`
+      const result = await client.query(`
         INSERT INTO complaints (
           job_id, created_by, reason, status
         )
-        VALUES (?, ?, ?, 'PENDING')
-      `);
-
-      const result = insertComplaint.run(parseInt(jobId), createdBy, reason);
-      const complaintId = result.lastInsertRowid;
+        VALUES ($1, $2, $3, 'PENDING')
+        RETURNING id
+      `, [parseInt(jobId), createdBy, reason]);
+      const complaintId = result.rows[0].id;
 
       // Insert evidences if provided
       if (evidences && Array.isArray(evidences) && evidences.length > 0) {
-        const insertEvidence = db.prepare(`
-          INSERT INTO complaint_evidences (
-            complaint_id, evidence_type, evidence_url
-          )
-          VALUES (?, ?, ?)
-        `);
-
-        evidences.forEach(evidence => {
+        for (const evidence of evidences) {
           if (evidence.type && evidence.url) {
-            insertEvidence.run(
-              complaintId,
-              evidence.type.toUpperCase(),
-              evidence.url
-            );
+            await client.query(`
+              INSERT INTO complaint_evidences (
+                complaint_id, evidence_type, evidence_url
+              )
+              VALUES ($1, $2, $3)
+            `, [complaintId, evidence.type.toUpperCase(), evidence.url]);
           }
-        });
+        }
       }
 
       return complaintId;
-    })();
+    });
 
     // Get created complaint with evidences
-    const complaint = getComplaintWithEvidences(
-      db.prepare('SELECT id FROM complaints WHERE job_id = ? AND created_by = ?')
-        .get(parseInt(jobId), createdBy).id
-    );
+    const complaint = await getComplaintWithEvidences(complaintId);
 
     res.status(201).json(complaint);
   } catch (error) {
@@ -92,18 +113,18 @@ function fileComplaint(req, res, next) {
 /**
  * Get my complaints
  */
-function getMyComplaints(req, res, next) {
+async function getMyComplaints(req, res, next) {
   try {
     const userId = req.user.id;
 
-    const complaints = db.prepare(`
+    const complaintsResult = await db.query(`
       SELECT * FROM complaints
-      WHERE created_by = ?
+      WHERE created_by = $1
       ORDER BY id DESC
-    `).all(userId);
+    `, [userId]);
 
-    const complaintsWithEvidences = complaints.map(complaint =>
-      getComplaintWithEvidences(complaint.id)
+    const complaintsWithEvidences = await Promise.all(
+      complaintsResult.rows.map(complaint => getComplaintWithEvidences(complaint.id))
     );
 
     res.status(200).json(complaintsWithEvidences);
@@ -115,9 +136,9 @@ function getMyComplaints(req, res, next) {
 /**
  * Get all pending complaints (Admin only)
  */
-function getPendingComplaints(req, res, next) {
+async function getPendingComplaints(req, res, next) {
   try {
-    const complaints = db.prepare(`
+    const complaintsResult = await db.query(`
       SELECT 
         c.*,
         u.phone as creator_phone,
@@ -128,17 +149,19 @@ function getPendingComplaints(req, res, next) {
       JOIN jobs j ON c.job_id = j.id
       WHERE c.status = 'PENDING'
       ORDER BY c.id ASC
-    `).all();
+    `);
 
-    const complaintsWithEvidences = complaints.map(complaint => {
-      const fullComplaint = getComplaintWithEvidences(complaint.id);
-      return {
-        ...fullComplaint,
-        creatorPhone: complaint.creator_phone,
-        creatorFullName: complaint.creator_full_name,
-        jobTitle: complaint.job_title
-      };
-    });
+    const complaintsWithEvidences = await Promise.all(
+      complaintsResult.rows.map(async (complaint) => {
+        const fullComplaint = await getComplaintWithEvidences(complaint.id);
+        return {
+          ...fullComplaint,
+          creatorPhone: complaint.creator_phone,
+          creatorFullName: complaint.creator_full_name,
+          jobTitle: complaint.job_title
+        };
+      })
+    );
 
     res.status(200).json(complaintsWithEvidences);
   } catch (error) {
@@ -149,7 +172,7 @@ function getPendingComplaints(req, res, next) {
 /**
  * Resolve a complaint (Admin only)
  */
-function resolveComplaint(req, res, next) {
+async function resolveComplaint(req, res, next) {
   try {
     const { complaintId } = req.params;
     const { decision, resolutionNote } = req.body;
@@ -164,15 +187,14 @@ function resolveComplaint(req, res, next) {
     }
 
     // Get complaint
-    const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?')
-      .get(parseInt(complaintId));
-
-    if (!complaint) {
+    const complaintResult = await db.query('SELECT * FROM complaints WHERE id = $1', [parseInt(complaintId)]);
+    if (complaintResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Complaint not found'
       });
     }
+    const complaint = complaintResult.rows[0];
 
     // Business rule: Can only resolve pending complaints
     if (complaint.status !== 'PENDING') {
@@ -186,54 +208,22 @@ function resolveComplaint(req, res, next) {
     const decisionUpper = decision.toUpperCase();
 
     // Update complaint status
-    db.prepare(`
+    await db.query(`
       UPDATE complaints
       SET status = 'RESOLVED',
-          decision = ?,
-          resolved_by = ?,
-          resolved_at = ?
-      WHERE id = ?
-    `).run(decisionUpper, adminId, now, parseInt(complaintId));
+          decision = $1,
+          resolved_by = $2,
+          resolved_at = $3
+      WHERE id = $4
+    `, [decisionUpper, adminId, now, parseInt(complaintId)]);
 
     // Get updated complaint
-    const updatedComplaint = getComplaintWithEvidences(parseInt(complaintId));
+    const updatedComplaint = await getComplaintWithEvidences(parseInt(complaintId));
 
     res.status(200).json(updatedComplaint);
   } catch (error) {
     next(error);
   }
-}
-
-/**
- * Helper function to get complaint with evidences
- */
-function getComplaintWithEvidences(complaintId) {
-  const complaint = db.prepare('SELECT * FROM complaints WHERE id = ?')
-    .get(complaintId);
-
-  if (!complaint) {
-    return null;
-  }
-
-  const evidences = db.prepare(`
-    SELECT * FROM complaint_evidences WHERE complaint_id = ?
-  `).all(complaintId);
-
-  return {
-    id: complaint.id,
-    jobId: complaint.job_id,
-    createdBy: complaint.created_by,
-    reason: complaint.reason,
-    status: complaint.status,
-    decision: complaint.decision,
-    resolvedBy: complaint.resolved_by,
-    resolvedAt: complaint.resolved_at,
-    evidences: evidences.map(ev => ({
-      id: ev.id,
-      evidenceType: ev.evidence_type,
-      evidenceUrl: ev.evidence_url
-    }))
-  };
 }
 
 module.exports = {
@@ -242,4 +232,3 @@ module.exports = {
   getPendingComplaints,
   resolveComplaint
 };
-

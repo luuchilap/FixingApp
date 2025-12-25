@@ -3,13 +3,21 @@
  * Creates: jobs, job_images tables
  */
 
-const db = require('../../config/db');
-
-function up() {
+async function up(client) {
+  // Helper to execute SQL - works with both client and db
+  const exec = async (sql) => {
+    if (client) {
+      await client.query(sql);
+    } else {
+      const db = require('../../config/db');
+      await db.exec(sql);
+    }
+  };
+  
   // Create jobs table
-  db.exec(`
+  await exec(`
     CREATE TABLE IF NOT EXISTS jobs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       employer_id INTEGER NOT NULL,
       title VARCHAR(150) NOT NULL,
       description TEXT NOT NULL,
@@ -18,40 +26,48 @@ function up() {
       required_skill VARCHAR(100),
       status VARCHAR(20) DEFAULT 'CHUA_LAM',
       accepted_worker_id INTEGER,
-      handover_deadline INTEGER,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
+      handover_deadline BIGINT,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
       FOREIGN KEY (employer_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (accepted_worker_id) REFERENCES users(id) ON DELETE SET NULL
     );
   `);
 
   // Create job_images table
-  db.exec(`
+  await exec(`
     CREATE TABLE IF NOT EXISTS job_images (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       job_id INTEGER NOT NULL,
       image_url TEXT NOT NULL,
-      is_primary BOOLEAN DEFAULT 0,
+      is_primary BOOLEAN DEFAULT FALSE,
       FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
     );
   `);
 
   // Create indexes for better query performance
-  db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_employer ON jobs(employer_id);');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_jobs_skill ON jobs(required_skill);');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_job_images_job ON job_images(job_id);');
+  await exec('CREATE INDEX IF NOT EXISTS idx_jobs_employer ON jobs(employer_id);');
+  await exec('CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);');
+  await exec('CREATE INDEX IF NOT EXISTS idx_jobs_skill ON jobs(required_skill);');
+  await exec('CREATE INDEX IF NOT EXISTS idx_job_images_job ON job_images(job_id);');
 
   console.log('Jobs schema migration completed');
 }
 
-function down() {
-  db.exec('DROP TABLE IF EXISTS job_images;');
-  db.exec('DROP TABLE IF EXISTS jobs;');
+async function down(client) {
+  const exec = async (sql) => {
+    if (client) {
+      await client.query(sql);
+    } else {
+      const db = require('../../config/db');
+      await db.exec(sql);
+    }
+  };
+  
+  await exec('DROP TABLE IF EXISTS job_images;');
+  await exec('DROP TABLE IF EXISTS jobs;');
 
   console.log('Jobs schema migration rolled back');
 }
 
 module.exports = { up, down };
-

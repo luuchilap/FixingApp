@@ -8,20 +8,20 @@ const db = require('../../config/db');
 /**
  * Apply to a job
  */
-function applyToJob(req, res, next) {
+async function applyToJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const workerId = req.user.id;
 
     // Get job
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     // Business rule: Cannot apply to completed job
     if (job.status === 'DA_XONG') {
@@ -40,12 +40,12 @@ function applyToJob(req, res, next) {
     }
 
     // Check if already applied
-    const existingApplication = db.prepare(`
+    const existingApplicationResult = await db.query(`
       SELECT * FROM job_applications 
-      WHERE job_id = ? AND worker_id = ?
-    `).get(parseInt(jobId), workerId);
+      WHERE job_id = $1 AND worker_id = $2
+    `, [parseInt(jobId), workerId]);
 
-    if (existingApplication) {
+    if (existingApplicationResult.rows.length > 0) {
       return res.status(400).json({
         error: 'Already applied',
         message: 'You have already applied to this job'
@@ -54,18 +54,13 @@ function applyToJob(req, res, next) {
 
     // Create application
     const now = Date.now();
-    const insertApplication = db.prepare(`
-      INSERT INTO job_applications (job_id, worker_id, status, applied_at)
-      VALUES (?, ?, 'APPLIED', ?)
-    `);
-
     try {
-      const result = insertApplication.run(parseInt(jobId), workerId, now);
-
-      // Get created application
-      const application = db.prepare(`
-        SELECT * FROM job_applications WHERE id = ?
-      `).get(result.lastInsertRowid);
+      const result = await db.query(`
+        INSERT INTO job_applications (job_id, worker_id, status, applied_at)
+        VALUES ($1, $2, 'APPLIED', $3)
+        RETURNING *
+      `, [parseInt(jobId), workerId, now]);
+      const application = result.rows[0];
 
       res.status(201).json({
         id: application.id,
@@ -76,7 +71,7 @@ function applyToJob(req, res, next) {
       });
     } catch (error) {
       // Handle unique constraint violation
-      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      if (error.code === '23505') { // PostgreSQL unique violation
         return res.status(400).json({
           error: 'Already applied',
           message: 'You have already applied to this job'
@@ -92,20 +87,20 @@ function applyToJob(req, res, next) {
 /**
  * Get applications for a job (Employer only)
  */
-function getJobApplications(req, res, next) {
+async function getJobApplications(req, res, next) {
   try {
     const { jobId } = req.params;
     const employerId = req.user.id;
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -115,7 +110,7 @@ function getJobApplications(req, res, next) {
     }
 
     // Get applications with worker info
-    const applications = db.prepare(`
+    const applicationsResult = await db.query(`
       SELECT 
         ja.*,
         u.id as worker_user_id,
@@ -128,11 +123,11 @@ function getJobApplications(req, res, next) {
       FROM job_applications ja
       JOIN users u ON ja.worker_id = u.id
       LEFT JOIN worker_profiles wp ON u.id = wp.user_id
-      WHERE ja.job_id = ?
+      WHERE ja.job_id = $1
       ORDER BY ja.applied_at DESC
-    `).all(parseInt(jobId));
+    `, [parseInt(jobId)]);
 
-    const formattedApplications = applications.map(app => ({
+    const formattedApplications = applicationsResult.rows.map(app => ({
       id: app.id,
       jobId: app.job_id,
       workerId: app.worker_id,
@@ -145,7 +140,7 @@ function getJobApplications(req, res, next) {
         address: app.worker_address,
         skill: app.worker_skill,
         avgRating: app.worker_avg_rating ? parseFloat(app.worker_avg_rating) : null,
-        isVerified: app.worker_is_verified === 1
+        isVerified: app.worker_is_verified === true
       }
     }));
 
@@ -158,20 +153,20 @@ function getJobApplications(req, res, next) {
 /**
  * Accept a worker application
  */
-function acceptWorker(req, res, next) {
+async function acceptWorker(req, res, next) {
   try {
     const { jobId, workerId } = req.params;
     const employerId = req.user.id;
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -189,59 +184,61 @@ function acceptWorker(req, res, next) {
     }
 
     // Get application
-    const application = db.prepare(`
+    const applicationResult = await db.query(`
       SELECT * FROM job_applications 
-      WHERE job_id = ? AND worker_id = ?
-    `).get(parseInt(jobId), parseInt(workerId));
+      WHERE job_id = $1 AND worker_id = $2
+    `, [parseInt(jobId), parseInt(workerId)]);
 
-    if (!application) {
+    if (applicationResult.rows.length === 0) {
       return res.status(400).json({
         error: 'Application not found',
         message: 'This worker has not applied to this job'
       });
     }
+    const application = applicationResult.rows[0];
 
     const now = Date.now();
 
     // Update job and application in transaction
-    db.transaction(() => {
+    await db.transaction(async (client) => {
       // Update application status
-      db.prepare(`
+      await client.query(`
         UPDATE job_applications 
         SET status = 'ACCEPTED' 
-        WHERE id = ?
-      `).run(application.id);
+        WHERE id = $1
+      `, [application.id]);
 
       // Update job status and accepted worker
-      db.prepare(`
+      await client.query(`
         UPDATE jobs 
         SET status = 'DANG_BAN_GIAO',
-            accepted_worker_id = ?,
-            handover_deadline = ?,
-            updated_at = ?
-        WHERE id = ?
-      `).run(
+            accepted_worker_id = $1,
+            handover_deadline = $2,
+            updated_at = $3
+        WHERE id = $4
+      `, [
         parseInt(workerId),
         now + (30 * 24 * 60 * 60 * 1000), // 30 days from now
         now,
         parseInt(jobId)
-      );
+      ]);
 
       // Create status log
-      db.prepare(`
+      await client.query(`
         INSERT INTO job_status_logs (job_id, old_status, new_status, changed_by, changed_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
         parseInt(jobId),
         job.status,
         'DANG_BAN_GIAO',
         employerId,
         now
-      );
-    })();
+      ]);
+    });
 
     // Get updated job
-    const updatedJob = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
+    const updatedJobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    const updatedJob = updatedJobResult.rows[0];
 
     res.status(200).json({
       id: updatedJob.id,
@@ -259,20 +256,20 @@ function acceptWorker(req, res, next) {
 /**
  * Reject a worker application
  */
-function rejectWorker(req, res, next) {
+async function rejectWorker(req, res, next) {
   try {
     const { jobId, workerId } = req.params;
     const employerId = req.user.id;
 
     // Get job and verify ownership
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     if (job.employer_id !== employerId) {
       return res.status(403).json({
@@ -282,24 +279,25 @@ function rejectWorker(req, res, next) {
     }
 
     // Get application
-    const application = db.prepare(`
+    const applicationResult = await db.query(`
       SELECT * FROM job_applications 
-      WHERE job_id = ? AND worker_id = ?
-    `).get(parseInt(jobId), parseInt(workerId));
+      WHERE job_id = $1 AND worker_id = $2
+    `, [parseInt(jobId), parseInt(workerId)]);
 
-    if (!application) {
+    if (applicationResult.rows.length === 0) {
       return res.status(400).json({
         error: 'Application not found',
         message: 'This worker has not applied to this job'
       });
     }
+    const application = applicationResult.rows[0];
 
     // Update application status
-    db.prepare(`
+    await db.query(`
       UPDATE job_applications 
       SET status = 'REJECTED' 
-      WHERE id = ?
-    `).run(application.id);
+      WHERE id = $1
+    `, [application.id]);
 
     res.status(200).json({
       message: 'Worker application rejected successfully'
@@ -312,11 +310,11 @@ function rejectWorker(req, res, next) {
 /**
  * Get applications by current worker
  */
-function getMyApplications(req, res, next) {
+async function getMyApplications(req, res, next) {
   try {
     const workerId = req.user.id;
 
-    const applications = db.prepare(`
+    const applicationsResult = await db.query(`
       SELECT 
         ja.*,
         j.title as job_title,
@@ -325,11 +323,11 @@ function getMyApplications(req, res, next) {
         j.address as job_address
       FROM job_applications ja
       JOIN jobs j ON ja.job_id = j.id
-      WHERE ja.worker_id = ?
+      WHERE ja.worker_id = $1
       ORDER BY ja.applied_at DESC
-    `).all(workerId);
+    `, [workerId]);
 
-    const formattedApplications = applications.map(app => ({
+    const formattedApplications = applicationsResult.rows.map(app => ({
       id: app.id,
       jobId: app.job_id,
       workerId: app.worker_id,
@@ -357,4 +355,3 @@ module.exports = {
   acceptWorker,
   rejectWorker
 };
-

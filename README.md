@@ -170,3 +170,5 @@ See `tests/README.md` for detailed testing documentation.
 
 ISC
 
+start backend: npm start
+start frontend: cd frontend/app-ui, type:  npm run dev -- -p 3001

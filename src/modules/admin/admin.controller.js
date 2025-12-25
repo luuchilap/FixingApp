@@ -9,10 +9,10 @@ const { getPendingCertificates, verifyCertificate } = require('../certificates/c
 /**
  * Get pending jobs (for MVP, returns all jobs in CHUA_LAM status)
  */
-function getPendingJobs(req, res, next) {
+async function getPendingJobs(req, res, next) {
   try {
     // In MVP, jobs don't have approval_status, so return all jobs in CHUA_LAM status
-    const jobs = db.prepare(`
+    const jobsResult = await db.query(`
       SELECT 
         j.*,
         u.phone as employer_phone,
@@ -21,9 +21,9 @@ function getPendingJobs(req, res, next) {
       JOIN users u ON j.employer_id = u.id
       WHERE j.status = 'CHUA_LAM'
       ORDER BY j.created_at DESC
-    `).all();
+    `);
 
-    const formattedJobs = jobs.map(job => ({
+    const formattedJobs = jobsResult.rows.map(job => ({
       id: job.id,
       employerId: job.employer_id,
       employerPhone: job.employer_phone,
@@ -46,18 +46,18 @@ function getPendingJobs(req, res, next) {
 /**
  * Approve a job (for MVP, just returns success - jobs are auto-approved)
  */
-function approveJob(req, res, next) {
+async function approveJob(req, res, next) {
   try {
     const { jobId } = req.params;
 
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
       });
     }
+    const job = jobResult.rows[0];
 
     // In MVP, jobs are auto-approved, so just return success
     res.status(200).json({
@@ -72,14 +72,13 @@ function approveJob(req, res, next) {
 /**
  * Reject a job (for MVP, deletes the job)
  */
-function rejectJob(req, res, next) {
+async function rejectJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const { reason } = req.body;
 
-    const job = db.prepare('SELECT * FROM jobs WHERE id = ?').get(parseInt(jobId));
-
-    if (!job) {
+    const jobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
+    if (jobResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Not Found',
         message: 'Job not found'
@@ -87,7 +86,7 @@ function rejectJob(req, res, next) {
     }
 
     // In MVP, rejecting a job deletes it
-    db.prepare('DELETE FROM jobs WHERE id = ?').run(parseInt(jobId));
+    await db.query('DELETE FROM jobs WHERE id = $1', [parseInt(jobId)]);
 
     res.status(200).json({
       rejected: true,
@@ -123,4 +122,3 @@ module.exports = {
   approveCertificate,
   rejectCertificate
 };
-
