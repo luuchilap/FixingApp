@@ -33,4 +33,6 @@ ensureMigrations().catch(console.error);
 // Vercel expects this to be a standard Express app export
 const app = require('../src/app');
 
+// For Vercel serverless functions, export the app directly
+// The routing in vercel.json will handle path matching
 module.exports = app;
