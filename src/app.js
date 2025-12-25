@@ -12,8 +12,27 @@ const app = express();
 // Middleware
 app.use(cors());
 // Increase body size limit to handle base64 images (50MB)
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+// Skip body parsing for multipart/form-data to allow multer to handle it
+// This is critical for Vercel serverless functions where multer needs to parse multipart requests
+app.use((req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  // Skip body parsing for multipart/form-data - let multer handle it
+  if (contentType.includes('multipart/form-data')) {
+    return next();
+  }
+  // For non-multipart requests, apply JSON parser
+  express.json({ limit: '500mb' })(req, res, next);
+});
+// Apply URL-encoded parser only for non-multipart requests
+app.use((req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  // Skip body parsing for multipart/form-data
+  if (contentType.includes('multipart/form-data')) {
+    return next();
+  }
+  // For non-multipart requests, apply URL-encoded parser
+  express.urlencoded({ extended: true, limit: '500mb' })(req, res, next);
+});
 
 // Request logging middleware (simple version for MVP)
 app.use((req, res, next) => {

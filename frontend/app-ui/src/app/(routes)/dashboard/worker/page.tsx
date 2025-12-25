@@ -55,19 +55,25 @@ export default function WorkerDashboardPage() {
   async function handleUploadClick() {
     if (!isAuthedWorker) return;
     setUploadMessage(null);
-    try {
-      // Use placeholder image per instruction; replace later with real file input.
-      const res = await fetch("/img_placeholder.jpg");
-      const blob = await res.blob();
-      const file = new File([blob], "certificate-placeholder.jpg", {
-        type: blob.type || "image/jpeg",
-      });
-      const saved = await uploadCertificate(file);
-      setCerts((prev) => [...prev, saved]);
-      setUploadMessage("Certificate uploaded (placeholder). Replace later.");
-    } catch {
-      setUploadMessage("Upload failed (placeholder endpoint).");
-    }
+    
+    // Create a file input element
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      try {
+        const saved = await uploadCertificate(file);
+        setCerts((prev) => [...prev, saved]);
+        setUploadMessage("Certificate uploaded successfully.");
+      } catch (error) {
+        setUploadMessage("Upload failed. Please try again.");
+        console.error("Certificate upload error:", error);
+      }
+    };
+    input.click();
   }
 
   if (!isAuthedWorker) {
@@ -170,7 +176,7 @@ export default function WorkerDashboardPage() {
             onClick={handleUploadClick}
             className="rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-sky-700"
           >
-            Upload placeholder
+            Upload certificate
           </button>
         </div>
         {uploadMessage && (

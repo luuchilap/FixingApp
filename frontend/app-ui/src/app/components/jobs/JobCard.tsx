@@ -10,14 +10,20 @@ export function JobCard({ job }: { job: Job }) {
       className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-sky-300 hover:shadow-md"
     >
       <div className="relative h-44 w-full bg-slate-100">
-        <Image
-          src={job.images?.[0]?.url ?? "/img_placeholder.jpg"}
-          alt={job.title}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          priority={false}
-        />
+        {job.images?.[0]?.url ? (
+          <Image
+            src={job.images[0].url}
+            alt={job.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            priority={false}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+            No image
+          </div>
+        )}
         <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[11px] font-semibold text-slate-700">
           {job.status}
         </div>

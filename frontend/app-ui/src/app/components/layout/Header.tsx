@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useChatUnreadCount } from "@/lib/hooks/useChatUnreadCount";
 import { NotificationBell } from "../notifications/NotificationBell";
@@ -18,15 +17,8 @@ export function Header() {
         {/* Main header row */}
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white shadow">
-              <Image
-                src="/img_placeholder.jpg"
-                alt="Brand"
-                fill
-                sizes="40px"
-                className="object-cover"
-                priority
-              />
+            <div className="relative h-10 w-10 overflow-hidden rounded-full bg-gradient-to-br from-sky-500 to-blue-600 shadow flex items-center justify-center">
+              <span className="text-lg font-bold text-white">F</span>
             </div>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-slate-900">FixingApp</p>

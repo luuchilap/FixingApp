@@ -16,7 +16,7 @@ export default function NewJobPage() {
   const [address, setAddress] = useState("");
   const [skill, setSkill] = useState<SkillValue | "">("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("/img_placeholder.jpg");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("No file chosen");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -154,7 +154,7 @@ export default function NewJobPage() {
               if (!file) {
                 setFileName("No file chosen");
                 setSelectedFile(null);
-                setPreviewUrl("/img_placeholder.jpg");
+                setPreviewUrl(null);
                 return;
               }
 
@@ -197,11 +197,17 @@ export default function NewJobPage() {
       </label>
       <div className="flex items-center gap-3">
         <div className="h-20 w-20 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
-          <img
-            src={previewUrl}
-            alt="Preview"
-            className="h-full w-full object-cover"
-          />
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+              No image
+            </div>
+          )}
         </div>
         <p className="text-xs text-slate-600">
           Ảnh sẽ được tải lên AWS S3 và lưu URL vào database.

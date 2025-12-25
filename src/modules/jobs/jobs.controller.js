@@ -117,10 +117,12 @@ async function createJob(req, res, next) {
       });
     }
 
-    if (price <= 0) {
+    // Parse price (FormData sends strings, JSON sends numbers)
+    const parsedPrice = typeof price === 'string' ? parseFloat(price) : Number(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
       return res.status(400).json({
         error: 'Invalid price',
-        message: 'Price must be greater than 0'
+        message: 'Price must be a valid number greater than 0'
       });
     }
 
@@ -174,7 +176,7 @@ async function createJob(req, res, next) {
         )
         VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8)
         RETURNING id
-      `, [employerId, title, description, price, address, normalizedSkill, now, now]);
+      `, [employerId, title, description, parsedPrice, address, normalizedSkill, now, now]);
       const jobId = jobResult.rows[0].id;
 
       // Insert images if provided
