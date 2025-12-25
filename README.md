@@ -6,9 +6,11 @@ Backend MVP for a web application connecting employers with workers for task-bas
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
-- **Database**: SQLite (better-sqlite3)
+- **Database**: Neon PostgreSQL (migrated from SQLite)
 - **Authentication**: JWT
 - **Testing**: Jest + Supertest
+- **Frontend**: Next.js (in `frontend/app-ui/`)
+- **Deployment**: Vercel (configured)
 
 ## Project Structure
 
@@ -40,9 +42,12 @@ npm install
 
 2. Set up environment variables (create `.env` file):
 ```
+DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 JWT_SECRET=your-secret-key-here
 PORT=3000
 ```
+
+**Note**: For Neon PostgreSQL, get your connection string from [neon.tech](https://neon.tech)
 
 3. Run database migrations:
 ```bash
@@ -142,12 +147,14 @@ For detailed testing instructions, see [SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md)
 - Worker certificate verification
 
 ### Excluded
-- Frontend UI
 - Payment processing
-- Real-time chat
+- Real-time chat (basic chat included)
 - Recommendation system
 - Advanced analytics
-- Cloud deployment
+
+### Included (Post-MVP)
+- ✅ Frontend UI (Next.js)
+- ✅ Cloud deployment (Vercel configured)
 
 ## API Endpoints
 
@@ -166,9 +173,39 @@ See `documentation/mvp_database.md` for complete database schema.
 
 See `tests/README.md` for detailed testing documentation.
 
+## Deployment
+
+### Vercel Deployment
+
+This project is configured for deployment on Vercel. See deployment guides:
+
+- **Quick Start**: [QUICK_DEPLOY.md](./QUICK_DEPLOY.md) - Fast deployment steps
+- **Detailed Guide**: [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment documentation
+
+**Quick Deploy Steps**:
+1. Push code to GitHub
+2. Import to Vercel
+3. Set environment variables (DATABASE_URL, JWT_SECRET, NEXT_PUBLIC_API_BASE_URL)
+4. Deploy!
+
 ## License
 
 ISC
 
-start backend: npm start
-start frontend: cd frontend/app-ui, type:  npm run dev -- -p 3001
+## Development Commands
+
+**Backend**:
+```bash
+npm start          # Start backend server
+npm run dev        # Start with auto-reload
+npm run migrate    # Run database migrations
+npm run seed       # Seed database with sample data
+```
+
+**Frontend**:
+```bash
+cd frontend/app-ui
+npm run dev        # Start Next.js dev server (port 3001)
+npm run build      # Build for production
+npm start          # Start production server
+```

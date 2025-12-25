@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+frontend/app-ui/node_modules/
+mobile/node_modules/
+01-fe-react-native-todo/node_modules/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+test.db*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+tests/
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+.next/
+out/
+
+# Documentation
+documentation/
+*.md
+!README.md
+
+# Mobile
+mobile/
+01-fe-react-native-todo/
+
+# Other
+img_placeholder.jpg
+
