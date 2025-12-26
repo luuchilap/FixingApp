@@ -13,6 +13,9 @@ export interface Job {
   status: JobStatus;
   acceptedWorkerId?: number | null;
   handoverDeadline?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number | null; // Distance in kilometers
   createdAt: number;
   updatedAt: number;
   images?: Array<{ type?: string; url: string }>;

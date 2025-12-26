@@ -45,7 +45,12 @@ npm install
 DATABASE_URL=postgresql://user:password@host/database?sslmode=require
 JWT_SECRET=your-secret-key-here
 PORT=3000
+TRACKASIA_API_KEY=your-trackasia-api-key-here
 ```
+
+**Note**: 
+- For Neon PostgreSQL, get your connection string from [neon.tech](https://neon.tech)
+- For TrackAsia API, get your API key from [track-asia.com](https://docs.track-asia.com/vi/) (required for location-based features)
 
 **Note**: For Neon PostgreSQL, get your connection string from [neon.tech](https://neon.tech)
 

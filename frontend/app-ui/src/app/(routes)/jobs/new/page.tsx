@@ -6,6 +6,7 @@ import { createJob } from "@/lib/api/employer";
 import { useAuth } from "@/lib/hooks/useAuth";
 import type { ApiError } from "@/lib/api/http";
 import { SKILLS, type SkillValue } from "@/lib/constants/skills";
+import { AddressAutocomplete } from "../../../components/jobs/AddressAutocomplete";
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function NewJobPage() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [address, setAddress] = useState("");
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [skill, setSkill] = useState<SkillValue | "">("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -42,6 +45,12 @@ export default function NewJobPage() {
       formData.append("description", description);
       formData.append("price", price.toString());
       formData.append("address", address);
+      if (latitude !== undefined) {
+        formData.append("latitude", latitude.toString());
+      }
+      if (longitude !== undefined) {
+        formData.append("longitude", longitude.toString());
+      }
       if (skill) {
         formData.append("requiredSkill", skill);
       }
@@ -133,13 +142,21 @@ export default function NewJobPage() {
 
         <label className="text-sm font-medium text-slate-700">
           Address*
-          <input
-            required
-            type="text"
+          <AddressAutocomplete
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            onChange={(addr, lat, lng) => {
+              setAddress(addr);
+              setLatitude(lat);
+              setLongitude(lng);
+            }}
+            placeholder="Nhập địa chỉ để tìm kiếm..."
+            required
           />
+          {latitude && longitude && (
+            <p className="mt-1 text-xs text-slate-500">
+              ✓ Đã xác định vị trí: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+            </p>
+          )}
         </label>
 
       <label className="text-sm font-medium text-slate-700">

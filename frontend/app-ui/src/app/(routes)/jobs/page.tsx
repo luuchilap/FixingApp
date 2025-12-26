@@ -28,6 +28,15 @@ function JobsPageContent() {
           maxPrice: searchParams.get("maxPrice")
             ? Number(searchParams.get("maxPrice"))
             : undefined,
+          latitude: searchParams.get("latitude")
+            ? Number(searchParams.get("latitude"))
+            : undefined,
+          longitude: searchParams.get("longitude")
+            ? Number(searchParams.get("longitude"))
+            : undefined,
+          maxDistance: searchParams.get("maxDistance")
+            ? Number(searchParams.get("maxDistance"))
+            : undefined,
         });
         setJobs(data);
         // Reset to page 1 when filters change

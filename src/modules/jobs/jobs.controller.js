@@ -5,6 +5,7 @@
 
 const db = require('../../config/db');
 const { uploadToS3 } = require('./jobs.utils');
+const { geocode, calculateDistance } = require('../../utils/trackasia');
 
 /**
  * Normalize skill value - maps skill values to standardized ones
@@ -91,6 +92,8 @@ async function getJobWithImages(jobId) {
     status: job.status,
     acceptedWorkerId: job.accepted_worker_id,
     handoverDeadline: job.handover_deadline,
+    latitude: job.latitude,
+    longitude: job.longitude,
     createdAt: job.created_at,
     updatedAt: job.updated_at,
     images: imagesResult.rows.map(img => ({
@@ -105,7 +108,7 @@ async function getJobWithImages(jobId) {
  */
 async function createJob(req, res, next) {
   try {
-    const { title, description, price, address, requiredSkill } = req.body;
+    const { title, description, price, address, requiredSkill, latitude, longitude } = req.body;
     let { images } = req.body; // Existing URLs if any
     const employerId = req.user.id;
 
@@ -115,6 +118,21 @@ async function createJob(req, res, next) {
         error: 'Missing required fields',
         message: 'title, description, price, and address are required'
       });
+    }
+
+    // Geocode address if lat/lng not provided
+    let jobLatitude = latitude ? parseFloat(latitude) : null;
+    let jobLongitude = longitude ? parseFloat(longitude) : null;
+
+    if (!jobLatitude || !jobLongitude) {
+      try {
+        const geocodeResult = await geocode(address);
+        jobLatitude = geocodeResult.latitude;
+        jobLongitude = geocodeResult.longitude;
+      } catch (geocodeError) {
+        console.warn('Geocoding failed, job will be created without coordinates:', geocodeError.message);
+        // Continue without coordinates - job can still be created
+      }
     }
 
     // Parse price (FormData sends strings, JSON sends numbers)
@@ -172,11 +190,11 @@ async function createJob(req, res, next) {
       const jobResult = await client.query(`
         INSERT INTO jobs (
           employer_id, title, description, price, address, required_skill,
-          status, created_at, updated_at
+          status, latitude, longitude, created_at, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8)
+        VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8, $9, $10)
         RETURNING id
-      `, [employerId, title, description, parsedPrice, address, normalizedSkill, now, now]);
+      `, [employerId, title, description, parsedPrice, address, normalizedSkill, jobLatitude, jobLongitude, now, now]);
       const jobId = jobResult.rows[0].id;
 
       // Insert images if provided
@@ -237,7 +255,7 @@ async function getJobById(req, res, next) {
  */
 async function listJobs(req, res, next) {
   try {
-    const { keyword, category, minPrice, maxPrice } = req.query;
+    const { keyword, category, minPrice, maxPrice, latitude, longitude, maxDistance } = req.query;
 
     let query = `
       SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
@@ -270,11 +288,20 @@ async function listJobs(req, res, next) {
       params.push(parseInt(maxPrice));
     }
 
+    // Filter by location if provided
+    if (latitude && longitude && maxDistance) {
+      query += ` AND j.latitude IS NOT NULL AND j.longitude IS NOT NULL`;
+    }
+
     query += ` ORDER BY j.created_at DESC`;
 
     const jobsResult = await db.query(query, params);
 
-    // Get images for each job
+    // Get images for each job and filter by distance if needed
+    const userLat = latitude ? parseFloat(latitude) : null;
+    const userLon = longitude ? parseFloat(longitude) : null;
+    const maxDist = maxDistance ? parseFloat(maxDistance) : null;
+
     const jobsWithImages = await Promise.all(
       jobsResult.rows.map(async (job) => {
         const imagesResult = await db.query('SELECT * FROM job_images WHERE job_id = $1 ORDER BY is_primary DESC, id ASC', [job.id]);
@@ -291,17 +318,34 @@ async function listJobs(req, res, next) {
           status: job.status,
           acceptedWorkerId: job.accepted_worker_id,
           handoverDeadline: job.handover_deadline,
+          latitude: job.latitude,
+          longitude: job.longitude,
           createdAt: job.created_at,
           updatedAt: job.updated_at,
           images: imagesResult.rows.map(img => ({
             type: 'IMAGE',
             url: img.image_url
-          }))
+          })),
+          // Calculate distance if user location provided
+          distance: (userLat && userLon && job.latitude && job.longitude) 
+            ? calculateDistance(userLat, userLon, parseFloat(job.latitude), parseFloat(job.longitude))
+            : null
         };
       })
     );
 
-    res.status(200).json(jobsWithImages);
+    // Filter by distance if provided
+    let filteredJobs = jobsWithImages;
+    if (userLat && userLon && maxDist) {
+      filteredJobs = jobsWithImages.filter(job => {
+        if (!job.distance) return false;
+        return job.distance <= maxDist;
+      });
+      // Sort by distance
+      filteredJobs.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    }
+
+    res.status(200).json(filteredJobs);
   } catch (error) {
     next(error);
   }
@@ -336,7 +380,7 @@ async function getMyJobs(req, res, next) {
 async function updateJob(req, res, next) {
   try {
     const { jobId } = req.params;
-    const { title, description, price, address, requiredSkill } = req.body;
+    const { title, description, price, address, requiredSkill, latitude, longitude } = req.body;
     let { images } = req.body; // Existing URLs to keep if any
     const employerId = req.user.id;
 
@@ -411,6 +455,27 @@ async function updateJob(req, res, next) {
     if (address !== undefined) {
       updates.push(`address = $${paramIndex++}`);
       values.push(address);
+      
+      // If address changed and no new lat/lng provided, geocode the new address
+      if (address !== job.address && (!latitude || !longitude)) {
+        try {
+          const geocodeResult = await geocode(address);
+          updates.push(`latitude = $${paramIndex++}`);
+          updates.push(`longitude = $${paramIndex++}`);
+          values.push(geocodeResult.latitude);
+          values.push(geocodeResult.longitude);
+        } catch (geocodeError) {
+          console.warn('Geocoding failed during update:', geocodeError.message);
+          // Continue without updating coordinates
+        }
+      }
+    }
+    
+    if (latitude !== undefined && longitude !== undefined) {
+      updates.push(`latitude = $${paramIndex++}`);
+      updates.push(`longitude = $${paramIndex++}`);
+      values.push(parseFloat(latitude));
+      values.push(parseFloat(longitude));
     }
     if (requiredSkill !== undefined) {
       // Normalize skill to ensure it matches one of the fixed skill values

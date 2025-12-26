@@ -9,17 +9,23 @@ export interface JobsQuery {
   keyword?: string;
   minPrice?: number;
   maxPrice?: number;
+  latitude?: number;
+  longitude?: number;
+  maxDistance?: number; // Maximum distance in kilometers
 }
 
 export async function fetchJobs(query: JobsQuery): Promise<Job[]> {
   // Backend expects `keyword` and `category` query params (see swagger.yaml)
-  const { q, skill, ...rest } = query;
+  const { q, skill, latitude, longitude, maxDistance, ...rest } = query;
   const finalQuery: Record<string, unknown> = {
     ...rest,
   };
 
   if (q) finalQuery.keyword = q;
   if (skill) finalQuery.category = skill;
+  if (latitude !== undefined) finalQuery.latitude = latitude;
+  if (longitude !== undefined) finalQuery.longitude = longitude;
+  if (maxDistance !== undefined) finalQuery.maxDistance = maxDistance;
 
   return apiGet<Job[]>("/api/jobs", { query: finalQuery });
 }
