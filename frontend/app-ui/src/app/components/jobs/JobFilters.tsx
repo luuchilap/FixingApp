@@ -4,6 +4,8 @@ import { FormEvent, useState, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SKILLS, type SkillValue } from "@/lib/constants/skills";
 import { AddressAutocomplete } from "./AddressAutocomplete";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { geocode, reverseGeocode } from "@/lib/api/trackasia";
 
 type DistanceOption = "1" | "3" | "5" | "";
 
@@ -17,6 +19,7 @@ export function JobFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user } = useAuth();
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [skill, setSkill] = useState<SkillValue | "">(
@@ -32,27 +35,81 @@ export function JobFilters() {
     (searchParams.get("distance") as DistanceOption) || ""
   );
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Get user's current location
-  function handleGetLocation() {
+  async function handleGetLocation() {
     setLocationError(null);
+    setIsGettingLocation(true);
+    
     if (!navigator.geolocation) {
       setLocationError("Trình duyệt không hỗ trợ định vị. Vui lòng nhập địa chỉ thủ công.");
+      setIsGettingLocation(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocationLat(position.coords.latitude);
-        setLocationLon(position.coords.longitude);
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        
+        setLocationLat(lat);
+        setLocationLon(lon);
         setUseLocation(true);
         setLocationError(null);
+        
+        // Reverse geocode to get address and fill into input
+        try {
+          const address = await reverseGeocode(lat, lon);
+          setLocationAddress(address);
+        } catch (error) {
+          console.error("Reverse geocoding error:", error);
+          // Still use coordinates even if reverse geocoding fails
+        }
+        
+        setIsGettingLocation(false);
       },
       (error) => {
         console.error("Geolocation error:", error);
         setLocationError("Không thể lấy vị trí. Vui lòng nhập địa chỉ thủ công.");
+        setIsGettingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
     );
+  }
+
+  // Get user's registered address location
+  async function handleGetRegisteredLocation() {
+    setLocationError(null);
+    
+    if (!user) {
+      setLocationError("Vui lòng đăng nhập để sử dụng tính năng này.");
+      return;
+    }
+
+    if (!user.address || user.address.trim().length === 0) {
+      setLocationError("Chưa đăng ký vị trí. Vui lòng cập nhật địa chỉ trong hồ sơ của bạn.");
+      return;
+    }
+
+    setIsGettingLocation(true);
+    try {
+      const geocodeResult = await geocode(user.address);
+      setLocationAddress(user.address);
+      setLocationLat(geocodeResult.latitude);
+      setLocationLon(geocodeResult.longitude);
+      setUseLocation(true);
+      setLocationError(null);
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      setLocationError("Không thể lấy tọa độ từ địa chỉ đã đăng ký. Vui lòng nhập địa chỉ thủ công.");
+    } finally {
+      setIsGettingLocation(false);
+    }
   }
 
   function handleSubmit(e: FormEvent) {
@@ -153,13 +210,40 @@ export function JobFilters() {
           <label className="text-sm font-medium text-slate-700">
             Tìm kiếm công việc gần bạn
           </label>
-          <button
-            type="button"
-            onClick={handleGetLocation}
-            className="inline-flex items-center justify-center rounded-full border border-sky-600 bg-white px-3 py-1.5 text-xs font-semibold text-sky-600 shadow-sm hover:bg-sky-50"
-          >
-            📍 Lấy vị trí hiện tại
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleGetLocation}
+              disabled={isGettingLocation}
+              className="inline-flex items-center justify-center rounded-full border border-sky-600 bg-white px-3 py-1.5 text-xs font-semibold text-sky-600 shadow-sm hover:bg-sky-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGettingLocation ? (
+                <>
+                  <div className="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-sky-600 border-t-transparent"></div>
+                  Đang lấy...
+                </>
+              ) : (
+                <>📍 Lấy vị trí hiện tại</>
+              )}
+            </button>
+            {user && (
+              <button
+                type="button"
+                onClick={handleGetRegisteredLocation}
+                disabled={isGettingLocation}
+                className="inline-flex items-center justify-center rounded-full border border-slate-600 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGettingLocation ? (
+                  <>
+                    <div className="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-slate-600 border-t-transparent"></div>
+                    Đang lấy...
+                  </>
+                ) : (
+                  <>🏠 Lấy vị trí đã đăng ký</>
+                )}
+              </button>
+            )}
+          </div>
         </div>
         
         {locationError && (

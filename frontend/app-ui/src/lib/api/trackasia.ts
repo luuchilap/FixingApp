@@ -124,6 +124,49 @@ export async function getPlaceDetails(placeId: string): Promise<{ latitude: numb
 }
 
 /**
+ * Reverse geocode coordinates to get address
+ */
+export async function reverseGeocode(latitude: number, longitude: number): Promise<string> {
+  if (!TRACKASIA_API_KEY) {
+    throw new Error('TRACKASIA_API_KEY not configured');
+  }
+
+  try {
+    const params = new URLSearchParams({
+      latlng: `${latitude},${longitude}`,
+      key: TRACKASIA_API_KEY,
+      result_type: 'street_address',
+      size: '1',
+      new_admin: 'true'
+    });
+    
+    const url = `${TRACKASIA_API_BASE}/geocode/json?${params.toString()}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`TrackAsia API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // TrackAsia Reverse Geocoding API follows Google Maps Geocoding format
+    if (data.results && data.results.length > 0) {
+      return data.results[0].formatted_address || '';
+    }
+
+    throw new Error('No results found for coordinates');
+  } catch (error) {
+    console.error('Error in TrackAsia reverseGeocode:', error);
+    throw error;
+  }
+}
+
+/**
  * Geocode an address to get coordinates using Search API
  */
 export async function geocode(address: string): Promise<{ latitude: number; longitude: number; address: string }> {
