@@ -77,14 +77,14 @@ async function geocode(address) {
   }
 
   try {
-    // Use Search API for geocoding
+    // Use Text Search API for geocoding (endpoint: /place/textsearch/json)
     const params = new URLSearchParams({
-      text: address,
+      query: address,
       key: TRACKASIA_API_KEY,
-      size: '1'
+      new_admin: 'true'
     });
     
-    const url = `${TRACKASIA_API_BASE}/place/search/json?${params.toString()}`;
+    const url = `${TRACKASIA_API_BASE}/place/textsearch/json?${params.toString()}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -100,8 +100,9 @@ async function geocode(address) {
 
     const data = await response.json();
     
-    // TrackAsia Search API returns results in results array (Google Maps Places format)
-    if (data.results && data.results.length > 0) {
+    // TrackAsia Text Search API follows Google Maps Places API format
+    // Response has status and results array
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
       const result = data.results[0];
       return {
         latitude: result.geometry?.location?.lat || 0,
@@ -111,7 +112,11 @@ async function geocode(address) {
       };
     }
 
-    throw new Error('No results found for address');
+    if (data.status === 'ZERO_RESULTS') {
+      throw new Error('No results found for address');
+    }
+
+    throw new Error(`Geocoding failed: ${data.status || 'Unknown error'}`);
   } catch (error) {
     console.error('Error in TrackAsia geocode:', error);
     throw error;

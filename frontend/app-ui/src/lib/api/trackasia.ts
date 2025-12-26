@@ -167,7 +167,7 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
 }
 
 /**
- * Geocode an address to get coordinates using Search API
+ * Geocode an address to get coordinates using Search API (Text Search)
  */
 export async function geocode(address: string): Promise<{ latitude: number; longitude: number; address: string }> {
   if (!TRACKASIA_API_KEY) {
@@ -179,14 +179,14 @@ export async function geocode(address: string): Promise<{ latitude: number; long
   }
 
   try {
-    // Use Search API for geocoding
+    // Use Text Search API for geocoding (endpoint: /place/textsearch/json)
     const params = new URLSearchParams({
-      text: address,
+      query: address,
       key: TRACKASIA_API_KEY,
-      size: '1'
+      new_admin: 'true'
     });
     
-    const url = `${TRACKASIA_API_BASE}/place/search/json?${params.toString()}`;
+    const url = `${TRACKASIA_API_BASE}/place/textsearch/json?${params.toString()}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -195,13 +195,16 @@ export async function geocode(address: string): Promise<{ latitude: number; long
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('TrackAsia geocode API error:', response.status, errorText);
       throw new Error(`TrackAsia API error: ${response.status}`);
     }
 
     const data = await response.json();
     
-    // TrackAsia Search API returns results in results array
-    if (data.results && data.results.length > 0) {
+    // TrackAsia Text Search API follows Google Maps Places API format
+    // Response has status and results array
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
       const result = data.results[0];
       return {
         latitude: result.geometry?.location?.lat || 0,
@@ -210,7 +213,11 @@ export async function geocode(address: string): Promise<{ latitude: number; long
       };
     }
 
-    throw new Error('No results found for address');
+    if (data.status === 'ZERO_RESULTS') {
+      throw new Error('No results found for address');
+    }
+
+    throw new Error(`Geocoding failed: ${data.status || 'Unknown error'}`);
   } catch (error) {
     console.error('Error in TrackAsia geocode:', error);
     throw error;
