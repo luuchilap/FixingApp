@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useChatUnreadCount } from "@/lib/hooks/useChatUnreadCount";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { RegisterTypeModal } from "../auth/RegisterTypeModal";
 
 export function Header() {
   const { user, logout } = useAuth();
   const role = user?.role ?? "GUEST";
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const chatUnreadCount = useChatUnreadCount();
 
   return (
@@ -79,12 +81,13 @@ export function Header() {
                   >
                     Đăng nhập
                   </Link>
-                  <Link
-                    href="/register/worker"
+                  <button
+                    type="button"
+                    onClick={() => setRegisterModalOpen(true)}
                     className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-950"
                   >
                     Đăng ký
-                  </Link>
+                  </button>
                 </>
               ) : (
                 <>
@@ -250,19 +253,27 @@ export function Header() {
                   >
                     Đăng nhập
                   </Link>
-                  <Link
-                    href="/register/worker"
-                    onClick={() => setMobileMenuOpen(false)}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setRegisterModalOpen(true);
+                    }}
                     className="rounded-md bg-slate-900 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-slate-950"
                   >
                     Đăng ký
-                  </Link>
+                  </button>
                 </div>
               )}
             </nav>
           </div>
         )}
       </div>
+      
+      <RegisterTypeModal
+        isOpen={registerModalOpen}
+        onClose={() => setRegisterModalOpen(false)}
+      />
     </header>
   );
 }

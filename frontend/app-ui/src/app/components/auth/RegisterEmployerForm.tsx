@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../../lib/hooks/useAuth";
+import { AddressAutocomplete } from "../jobs/AddressAutocomplete";
 
 export function RegisterEmployerForm() {
   const router = useRouter();
@@ -85,11 +86,10 @@ export function RegisterEmployerForm() {
 
       <label className="text-sm font-medium text-slate-700">
         Address
-        <input
-          type="text"
+        <AddressAutocomplete
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          onChange={(addr) => setAddress(addr)}
+          placeholder="Nhập địa chỉ..."
         />
       </label>
 
