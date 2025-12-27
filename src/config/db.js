@@ -24,7 +24,7 @@ const pool = new Pool({
   // Connection pool settings
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection cannot be established
+  connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection cannot be established (increased for Neon serverless)
   ssl: process.env.DB_SSL === 'true' || process.env.DATABASE_URL?.includes('sslmode=require') ? {
     rejectUnauthorized: false // For Neon and other cloud providers
   } : false
@@ -37,23 +37,47 @@ pool.on('connect', () => {
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Don't exit on connection errors - let the pool handle reconnection
+  // Only exit on critical errors
+  if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+    console.error('Database connection failed. Check your DATABASE_URL and network connectivity.');
+  }
 });
 
-// Helper function to execute queries with better error handling
-async function query(text, params) {
+// Helper function to execute queries with better error handling and retry logic
+async function query(text, params, retries = 1) {
   const start = Date.now();
-  try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Executed query', { text, duration, rows: res.rowCount });
+  let lastError;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await pool.query(text, params);
+      const duration = Date.now() - start;
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Executed query', { text, duration, rows: res.rowCount });
+      }
+      return res;
+    } catch (error) {
+      lastError = error;
+      
+      // Retry on connection timeout errors
+      if (attempt < retries && (
+        error.message?.includes('timeout') ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.code === 'ETIMEDOUT'
+      )) {
+        const waitTime = (attempt + 1) * 1000; // Exponential backoff: 1s, 2s
+        console.warn(`Query timeout, retrying in ${waitTime}ms... (attempt ${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      console.error('Database query error', { text, error: error.message, code: error.code });
+      throw error;
     }
-    return res;
-  } catch (error) {
-    console.error('Database query error', { text, error: error.message });
-    throw error;
   }
+  
+  throw lastError;
 }
 
 // Helper function for transactions

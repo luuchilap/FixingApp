@@ -37,6 +37,11 @@ export default function JobDetailPage() {
 
   const isWorker = user?.role === "WORKER";
   const isEmployerOwner = user?.role === "EMPLOYER" && user.id === job?.employerId;
+  // Allow employer or any worker to complain (backend will validate if worker has applied or is accepted)
+  const canComplain = user && (
+    user.id === job?.employerId || 
+    isWorker // Show form to all workers, backend validates if they have applied
+  );
 
   useEffect(() => {
     async function load() {
@@ -91,15 +96,23 @@ export default function JobDetailPage() {
 
   async function handleComplaintSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!complaintReason.trim()) return;
+    if (!complaintReason.trim()) {
+      setComplaintMessage("Please enter a reason for the complaint.");
+      return;
+    }
+    if (!job || !job.id) {
+      setComplaintMessage("Job information is missing.");
+      return;
+    }
     setComplaintMessage(null);
     try {
-      await fileComplaint({ jobId, reason: complaintReason.trim() });
+      await fileComplaint({ jobId: job.id, reason: complaintReason.trim() });
       setComplaintMessage("Complaint submitted. We will review it soon.");
       setComplaintReason("");
     } catch (err) {
       const e = err as ApiError;
       setComplaintMessage(e.message ?? "Failed to submit complaint.");
+      console.error("Complaint submission error:", err);
     }
   }
 
@@ -234,7 +247,7 @@ export default function JobDetailPage() {
           <p className="mt-3 text-sm text-slate-700">{actionMessage}</p>
         )}
 
-        {user && (
+        {canComplain && (
           <div className="mt-6 rounded-xl border border-slate-200 p-4">
             <h3 className="text-sm font-semibold text-slate-900">
               File a complaint

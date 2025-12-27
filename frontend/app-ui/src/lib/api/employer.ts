@@ -2,8 +2,9 @@ import { apiGet, apiPost } from "./http";
 import type { Job } from "../types/jobs";
 import type { JobApplication } from "../types/applications";
 
-export async function fetchMyJobs(): Promise<Job[]> {
-  return apiGet<Job[]>("/api/jobs/my", { auth: true });
+export async function fetchMyJobs(status?: string): Promise<Job[]> {
+  const params = status ? `?status=${encodeURIComponent(status)}` : '';
+  return apiGet<Job[]>(`/api/jobs/my${params}`, { auth: true });
 }
 
 export interface CreateJobRequest {

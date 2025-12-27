@@ -353,16 +353,29 @@ async function listJobs(req, res, next) {
 
 /**
  * Get jobs posted by current employer
+ * Query params: status (optional) - filter by job status
  */
 async function getMyJobs(req, res, next) {
   try {
     const employerId = req.user.id;
+    const { status } = req.query;
 
-    const jobsResult = await db.query(`
+    let query = `
       SELECT * FROM jobs
       WHERE employer_id = $1
-      ORDER BY created_at DESC
-    `, [employerId]);
+    `;
+    
+    const params = [employerId];
+    
+    // Add status filter if provided
+    if (status && status !== '') {
+      query += ` AND status = $2`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY created_at DESC`;
+
+    const jobsResult = await db.query(query, params);
 
     const jobsWithImages = await Promise.all(
       jobsResult.rows.map(job => getJobWithImages(job.id))

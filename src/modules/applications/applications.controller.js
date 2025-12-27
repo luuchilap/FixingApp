@@ -309,12 +309,14 @@ async function rejectWorker(req, res, next) {
 
 /**
  * Get applications by current worker
+ * Query params: jobStatus (optional) - filter by job status
  */
 async function getMyApplications(req, res, next) {
   try {
     const workerId = req.user.id;
+    const { jobStatus } = req.query;
 
-    const applicationsResult = await db.query(`
+    let query = `
       SELECT 
         ja.*,
         j.title as job_title,
@@ -324,8 +326,19 @@ async function getMyApplications(req, res, next) {
       FROM job_applications ja
       JOIN jobs j ON ja.job_id = j.id
       WHERE ja.worker_id = $1
-      ORDER BY ja.applied_at DESC
-    `, [workerId]);
+    `;
+    
+    const params = [workerId];
+    
+    // Add job status filter if provided
+    if (jobStatus && jobStatus !== '') {
+      query += ` AND j.status = $2`;
+      params.push(jobStatus);
+    }
+    
+    query += ` ORDER BY ja.applied_at DESC`;
+
+    const applicationsResult = await db.query(query, params);
 
     const formattedApplications = applicationsResult.rows.map(app => ({
       id: app.id,

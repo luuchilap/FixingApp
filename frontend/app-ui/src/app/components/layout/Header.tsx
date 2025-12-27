@@ -36,7 +36,17 @@ export function Header() {
             <Link href="/jobs" className="hover:text-sky-700">
               Việc làm
             </Link>
-            {role !== "GUEST" && (
+            {role === "WORKER" && (
+              <Link href="/dashboard" className="hover:text-sky-700">
+                Công việc đã apply
+              </Link>
+            )}
+            {role === "EMPLOYER" && (
+              <Link href="/dashboard" className="hover:text-sky-700">
+                Công việc đã đăng
+              </Link>
+            )}
+            {role === "ADMIN" && (
               <Link href="/dashboard" className="hover:text-sky-700">
                 Bảng điều khiển
               </Link>
@@ -173,15 +183,35 @@ export function Header() {
               >
                 Việc làm
               </Link>
+              {role === "WORKER" && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-white/50"
+                >
+                  Công việc đã apply
+                </Link>
+              )}
+              {role === "EMPLOYER" && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-white/50"
+                >
+                  Công việc đã đăng
+                </Link>
+              )}
+              {role === "ADMIN" && (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-md px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-white/50"
+                >
+                  Bảng điều khiển
+                </Link>
+              )}
               {role !== "GUEST" && (
                 <>
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="rounded-md px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-white/50"
-                  >
-                    Bảng điều khiển
-                  </Link>
                   {(role === "EMPLOYER" || role === "WORKER") && (
                     <Link
                       href="/chat"

@@ -181,7 +181,46 @@ async function getWorkerReviews(req, res, next) {
   }
 }
 
+/**
+ * Get reviews for current worker (Worker only)
+ */
+async function getMyReviews(req, res, next) {
+  try {
+    const workerId = req.user.id;
+
+    // Get reviews with employer info
+    const reviewsResult = await db.query(`
+      SELECT 
+        wr.*,
+        u.phone as employer_phone,
+        u.full_name as employer_full_name,
+        j.title as job_title
+      FROM worker_reviews wr
+      JOIN users u ON wr.employer_id = u.id
+      JOIN jobs j ON wr.job_id = j.id
+      WHERE wr.worker_id = $1
+      ORDER BY wr.created_at DESC
+    `, [workerId]);
+
+    const formattedReviews = reviewsResult.rows.map(review => ({
+      id: review.id,
+      jobId: review.job_id,
+      jobTitle: review.job_title,
+      workerId: review.worker_id,
+      reviewerName: review.employer_full_name || review.employer_phone,
+      rating: review.stars,
+      comment: review.comment,
+      createdAt: review.created_at
+    }));
+
+    res.status(200).json(formattedReviews);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   submitReview,
-  getWorkerReviews
+  getWorkerReviews,
+  getMyReviews
 };

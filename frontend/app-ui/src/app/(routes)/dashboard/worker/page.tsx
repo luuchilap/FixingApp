@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import type { JobApplication } from "@/lib/types/applications";
+import type { JobStatus } from "@/lib/types/jobs";
 import {
   fetchCertificates,
   fetchMyApplications,
@@ -12,6 +13,14 @@ import {
   type WorkerReview,
 } from "@/lib/api/worker";
 
+const JOB_STATUS_OPTIONS: { value: JobStatus | ""; label: string }[] = [
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "CHUA_LAM", label: "Chưa làm" },
+  { value: "DANG_BAN_GIAO", label: "Đang bàn giao" },
+  { value: "DA_HOAN_THANH", label: "Đã hoàn thành" },
+  { value: "EXPIRED", label: "Hết hạn" },
+];
+
 export default function WorkerDashboardPage() {
   const { user, status } = useAuth();
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -20,6 +29,7 @@ export default function WorkerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [jobStatusFilter, setJobStatusFilter] = useState<JobStatus | "">("");
 
   const isAuthedWorker = status === "authenticated" && user?.role === "WORKER";
 
@@ -30,7 +40,7 @@ export default function WorkerDashboardPage() {
       setError(null);
       try {
         const [appsRes, certRes, reviewRes] = await Promise.allSettled([
-          fetchMyApplications(),
+          fetchMyApplications(jobStatusFilter || undefined),
           fetchCertificates(),
           fetchMyReviews(),
         ]);
@@ -50,7 +60,7 @@ export default function WorkerDashboardPage() {
     }
 
     load();
-  }, [isAuthedWorker]);
+  }, [isAuthedWorker, jobStatusFilter]);
 
   async function handleUploadClick() {
     if (!isAuthedWorker) return;
@@ -90,21 +100,37 @@ export default function WorkerDashboardPage() {
     <div className="mx-auto max-w-5xl space-y-6 py-8">
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">
-          Worker dashboard
+          Công việc đã apply
         </h1>
         <p className="text-sm text-slate-600">
-          Track your applications, reviews, and certificates.
+          Theo dõi các công việc bạn đã apply, đánh giá và chứng chỉ.
         </p>
       </header>
 
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-slate-900">
-            Applications
+            Các công việc đã apply
           </h2>
           {loading && (
-            <span className="text-xs text-slate-500">Loading data...</span>
+            <span className="text-xs text-slate-500">Đang tải...</span>
           )}
+        </div>
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Lọc theo trạng thái công việc:
+          </label>
+          <select
+            value={jobStatusFilter}
+            onChange={(e) => setJobStatusFilter(e.target.value as JobStatus | "")}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          >
+            {JOB_STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
         {error && (
           <p className="mt-2 text-sm text-red-600">
@@ -113,29 +139,49 @@ export default function WorkerDashboardPage() {
         )}
         {applications.length === 0 ? (
           <p className="mt-2 text-sm text-slate-600">
-            You have not applied to any jobs yet.
+            Bạn chưa apply công việc nào.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-slate-200 text-sm">
+          <div className="mt-3 grid gap-3">
             {applications.map((app) => (
-              <li
+              <a
                 key={app.id}
-                className="flex items-center justify-between py-2"
+                href={`/jobs/${app.jobId}`}
+                className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm hover:border-sky-300 hover:shadow-md"
               >
-                <div>
-                  <p className="font-medium">
-                    Job #{app.jobId} (status: {app.status})
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Worker ID: {app.workerId}
-                  </p>
-                </div>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                  {app.status}
-                </span>
-              </li>
+                {app.job ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {app.job.title}
+                      </p>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase text-slate-600">
+                        {app.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">{app.job.address}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-sky-700">
+                        {app.job.price.toLocaleString("vi-VN")} đ
+                      </p>
+                      <span className="text-xs text-slate-500">
+                        Trạng thái công việc: {app.job.status}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="font-medium">
+                      Job #{app.jobId} (status: {app.status})
+                    </p>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                      {app.status}
+                    </span>
+                  </div>
+                )}
+              </a>
             ))}
-          </ul>
+          </div>
         )}
       </section>
 

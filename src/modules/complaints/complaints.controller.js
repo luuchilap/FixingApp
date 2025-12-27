@@ -62,11 +62,26 @@ async function fileComplaint(req, res, next) {
     }
     const job = jobResult.rows[0];
 
-    // Business rule: User must be involved in the job (employer or accepted worker)
-    if (job.employer_id !== createdBy && job.accepted_worker_id !== createdBy) {
+    // Business rule: User must be involved in the job
+    // - Employer can always complain
+    // - Worker can complain if they are accepted OR if they have applied to the job
+    const isEmployer = job.employer_id === createdBy;
+    const isAcceptedWorker = job.accepted_worker_id === createdBy;
+    
+    let isAppliedWorker = false;
+    if (!isEmployer && !isAcceptedWorker) {
+      // Check if worker has applied to this job
+      const applicationResult = await db.query(
+        'SELECT * FROM job_applications WHERE job_id = $1 AND worker_id = $2',
+        [parseInt(jobId), createdBy]
+      );
+      isAppliedWorker = applicationResult.rows.length > 0;
+    }
+
+    if (!isEmployer && !isAcceptedWorker && !isAppliedWorker) {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'You can only file complaints for jobs you are involved in'
+        message: 'You can only file complaints for jobs you are involved in (as employer, accepted worker, or applicant)'
       });
     }
 
