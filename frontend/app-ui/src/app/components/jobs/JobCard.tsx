@@ -19,8 +19,6 @@ export function JobCard({ job }: { job: Job }) {
         if (typeof urlValue === 'string' && urlValue !== '[object Object]' && urlValue.startsWith('http')) {
           imageSrc = urlValue;
         }
-      } else if ('src' in firstImage && typeof firstImage.src === 'string') {
-        imageSrc = firstImage.src;
       }
     }
   }
