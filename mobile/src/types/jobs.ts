@@ -15,6 +15,9 @@ export interface Job {
   employerName?: string;
   employerPhone?: string;
   images?: Array<{ type?: string; url: string }>;
+  latitude?: number | string | null; // Latitude coordinate
+  longitude?: number | string | null; // Longitude coordinate
+  distance?: number | null; // Distance in kilometers
 }
 
 export interface Application {

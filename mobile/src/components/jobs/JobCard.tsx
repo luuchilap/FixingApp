@@ -106,6 +106,17 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
             </Text>
           </View>
 
+          {job.distance !== null && job.distance !== undefined && (
+            <View style={styles.distanceBadge}>
+              <Text style={styles.distanceIcon}>📍</Text>
+              <Text style={styles.distanceText}>
+                {job.distance < 1
+                  ? `${(job.distance * 1000).toFixed(0)}m`
+                  : `${job.distance.toFixed(1)}km`}
+              </Text>
+            </View>
+          )}
+
           <Text style={styles.time}>{formatDate(job.createdAt)}</Text>
         </View>
       </View>
@@ -190,6 +201,25 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.full,
+    marginBottom: spacing[1],
+    gap: spacing[1],
+  },
+  distanceIcon: {
+    fontSize: typography.fontSize.sm,
+  },
+  distanceText: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.primary[700],
   },
   time: {
     fontSize: typography.fontSize.xs,

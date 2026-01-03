@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePhone, validatePassword } from '../../utils/validation';
+import { AddressAutocomplete } from '../ui/AddressAutocomplete';
 
 interface RegisterEmployerFormProps {
   onSuccess?: () => void;
@@ -112,13 +113,11 @@ export const RegisterEmployerForm: React.FC<RegisterEmployerFormProps> = ({ onSu
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Address</Text>
-          <TextInput
-            style={styles.input}
+          <AddressAutocomplete
+            label="Address"
             value={address}
-            onChangeText={setAddress}
+            onChange={(addr) => setAddress(addr)}
             placeholder="Enter your address (optional)"
-            editable={!isLoading}
           />
         </View>
 

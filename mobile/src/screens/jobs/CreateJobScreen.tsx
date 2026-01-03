@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
 import { Picker } from '@react-native-picker/picker';
 import { createJob } from '../../services/jobsApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
@@ -33,6 +34,8 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
   const [requiredSkill, setRequiredSkill] = useState<SkillValue | ''>('');
   const [images, setImages] = useState<ImageAsset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,6 +138,12 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
       formData.append('price', parseFloat(price).toString());
       formData.append('address', address.trim());
       formData.append('requiredSkill', requiredSkill as string);
+      
+      // Add coordinates if available
+      if (latitude !== undefined && longitude !== undefined) {
+        formData.append('latitude', latitude.toString());
+        formData.append('longitude', longitude.toString());
+      }
 
       // Add images
       images.forEach((image, index) => {
@@ -200,10 +209,14 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
           required
         />
 
-        <Input
+        <AddressAutocomplete
           label="Địa chỉ"
           value={address}
-          onChangeText={setAddress}
+          onChange={(addr, lat, lng) => {
+            setAddress(addr);
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
           placeholder="Địa chỉ thực hiện công việc"
           error={errors.address}
           required

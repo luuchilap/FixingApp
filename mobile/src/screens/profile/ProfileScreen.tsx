@@ -6,11 +6,13 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
+import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
 import { getCurrentUser, updateUserProfile, UserProfile } from '../../services/usersApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 
@@ -105,30 +107,44 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
-            }
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      // Use window.confirm for web platform
+      const confirmed = window.confirm('Bạn có chắc chắn muốn đăng xuất?');
+      if (confirmed) {
+        try {
+          await logout();
+        } catch (error) {
+          console.error('Logout error:', error);
+          window.alert('Không thể đăng xuất. Vui lòng thử lại.');
+        }
+      }
+    } else {
+      // Use Alert.alert for native platforms
+      Alert.alert(
+        'Đăng xuất',
+        'Bạn có chắc chắn muốn đăng xuất?',
+        [
+          {
+            text: 'Hủy',
+            style: 'cancel',
           },
-        },
-      ],
-      { cancelable: true }
-    );
+          {
+            text: 'Đăng xuất',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await logout();
+              } catch (error) {
+                console.error('Logout error:', error);
+                Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   if (loading) {
@@ -156,7 +172,11 @@ export const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Hồ sơ cá nhân</Text>
 
       {/* Profile Info Card */}
@@ -171,10 +191,10 @@ export const ProfileScreen: React.FC = () => {
               required
             />
 
-            <Input
+            <AddressAutocomplete
               label="Địa chỉ"
               value={formData.address}
-              onChangeText={(text) => setFormData({ ...formData, address: text })}
+              onChange={(addr) => setFormData({ ...formData, address: addr })}
               error={errors.address}
             />
 

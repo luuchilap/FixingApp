@@ -4,15 +4,36 @@ import type { Job } from "@/lib/types/jobs";
 import { getSkillLabel } from "@/lib/constants/skills";
 
 export function JobCard({ job }: { job: Job }) {
+  // Get the first image URL, ensuring it's a string
+  const firstImage = job.images?.[0];
+  let imageSrc: string | null = null;
+  
+  if (firstImage) {
+    // Handle different possible structures
+    if (typeof firstImage === 'string') {
+      imageSrc = firstImage;
+    } else if (typeof firstImage === 'object' && firstImage !== null) {
+      if ('url' in firstImage) {
+        const urlValue = firstImage.url;
+        // Check if url is a valid string (not "[object Object]")
+        if (typeof urlValue === 'string' && urlValue !== '[object Object]' && urlValue.startsWith('http')) {
+          imageSrc = urlValue;
+        }
+      } else if ('src' in firstImage && typeof firstImage.src === 'string') {
+        imageSrc = firstImage.src;
+      }
+    }
+  }
+
   return (
     <Link
       href={`/jobs/${job.id}`}
       className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-sky-300 hover:shadow-md"
     >
       <div className="relative h-44 w-full bg-slate-100">
-        {job.images?.[0]?.url ? (
+        {imageSrc ? (
           <Image
-            src={job.images[0].url}
+            src={imageSrc}
             alt={job.title}
             fill
             className="object-cover"

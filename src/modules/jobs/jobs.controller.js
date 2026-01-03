@@ -327,7 +327,7 @@ async function listJobs(req, res, next) {
             url: img.image_url
           })),
           // Calculate distance if user location provided
-          distance: (userLat && userLon && job.latitude && job.longitude) 
+          distance: (userLat && userLon && job.latitude != null && job.longitude != null) 
             ? calculateDistance(userLat, userLon, parseFloat(job.latitude), parseFloat(job.longitude))
             : null
         };
@@ -337,12 +337,29 @@ async function listJobs(req, res, next) {
     // Filter by distance if provided
     let filteredJobs = jobsWithImages;
     if (userLat && userLon && maxDist) {
-      filteredJobs = jobsWithImages.filter(job => {
-        if (!job.distance) return false;
-        return job.distance <= maxDist;
-      });
-      // Sort by distance
-      filteredJobs.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+      // Validate inputs are valid numbers
+      if (isNaN(userLat) || isNaN(userLon) || isNaN(maxDist) || !isFinite(userLat) || !isFinite(userLon) || !isFinite(maxDist)) {
+        console.error('Invalid location filter parameters:', { latitude, longitude, maxDistance, userLat, userLon, maxDist });
+      } else {
+        filteredJobs = jobsWithImages.filter(job => {
+          // Only include jobs with valid coordinates and distance
+          if (!job.distance || job.distance === null || job.distance === undefined) {
+            return false;
+          }
+          // Check if distance is valid number
+          if (isNaN(job.distance) || !isFinite(job.distance)) {
+            return false;
+          }
+          // Check if distance is within maxDistance (strict comparison)
+          return job.distance <= maxDist;
+        });
+        // Sort by distance
+        filteredJobs.sort((a, b) => {
+          const distA = a.distance || Infinity;
+          const distB = b.distance || Infinity;
+          return distA - distB;
+        });
+      }
     }
 
     res.status(200).json(filteredJobs);

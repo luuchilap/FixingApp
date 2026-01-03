@@ -27,6 +27,9 @@ export async function fetchJobs(query: JobsQuery): Promise<Job[]> {
   if (longitude !== undefined) finalQuery.longitude = longitude;
   if (maxDistance !== undefined) finalQuery.maxDistance = maxDistance;
 
+  console.log('fetchJobs called with query:', query);
+  console.log('fetchJobs finalQuery:', finalQuery);
+  
   return apiGet<Job[]>("/api/jobs", { query: finalQuery });
 }
 

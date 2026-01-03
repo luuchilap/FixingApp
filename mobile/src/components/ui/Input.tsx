@@ -20,6 +20,7 @@ export interface InputProps extends TextInputProps {
   containerStyle?: ViewStyle;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  required?: boolean;
 }
 
 export const Input: React.FC<InputProps> = ({

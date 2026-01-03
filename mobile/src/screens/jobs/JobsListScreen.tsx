@@ -18,6 +18,7 @@ import { Job } from '../../types/jobs';
 import { listJobs, getMyJobs } from '../../services/jobsApi';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
+import { calculateDistance } from '../../utils/distance';
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -39,8 +40,9 @@ export const JobsListScreen: React.FC = () => {
         // Employers see their own jobs with filters
         // Note: getMyJobs doesn't support filters, so we'll filter client-side
         const allJobs = await getMyJobs();
+        
         // Apply client-side filtering for employers
-        jobsData = allJobs.filter((job) => {
+        let filtered = allJobs.filter((job) => {
           if (filters.keyword) {
             const keyword = filters.keyword.toLowerCase();
             const matchesKeyword = 
@@ -59,6 +61,40 @@ export const JobsListScreen: React.FC = () => {
           }
           return true;
         });
+        
+        // Apply location filtering if provided
+        if (filters.latitude && filters.longitude && filters.maxDistance) {
+          const userLat = filters.latitude;
+          const userLon = filters.longitude;
+          const maxDist = filters.maxDistance;
+          
+          // Calculate distance for each job and filter
+          filtered = filtered
+            .map((job) => {
+              if (job.latitude != null && job.longitude != null) {
+                const jobLat = typeof job.latitude === 'string' ? parseFloat(job.latitude) : job.latitude;
+                const jobLon = typeof job.longitude === 'string' ? parseFloat(job.longitude) : job.longitude;
+                
+                if (!isNaN(jobLat) && !isNaN(jobLon) && isFinite(jobLat) && isFinite(jobLon)) {
+                  const distance = calculateDistance(userLat, userLon, jobLat, jobLon);
+                  return { ...job, distance };
+                }
+              }
+              return { ...job, distance: null };
+            })
+            .filter((job) => {
+              // Only include jobs with valid distance within maxDistance
+              return job.distance != null && job.distance <= maxDist;
+            })
+            .sort((a, b) => {
+              // Sort by distance
+              const distA = a.distance || Infinity;
+              const distB = b.distance || Infinity;
+              return distA - distB;
+            });
+        }
+        
+        jobsData = filtered;
       } else {
         // Workers see all available jobs with filters
         const params: Parameters<typeof listJobs>[0] = {

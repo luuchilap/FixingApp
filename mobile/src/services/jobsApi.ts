@@ -8,6 +8,9 @@ export interface ListJobsParams {
   maxPrice?: number;
   status?: string;
   sort?: string;
+  latitude?: number;
+  longitude?: number;
+  maxDistance?: number;
 }
 
 export interface JobWithImages extends Job {
