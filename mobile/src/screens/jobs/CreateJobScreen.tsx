@@ -14,7 +14,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
-import { Picker } from '@react-native-picker/picker';
+import { Select } from '../../components/ui/Select';
 import { createJob } from '../../services/jobsApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { SKILLS, SkillValue } from '../../constants/skills';
@@ -222,26 +222,17 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
           required
         />
 
-        <View style={styles.pickerGroup}>
-          <Text style={styles.label}>
-            Kỹ năng yêu cầu <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={requiredSkill}
-              onValueChange={(value) => setRequiredSkill(value)}
-              style={styles.picker}
-            >
-              <Picker.Item label="-- Chọn kỹ năng --" value="" />
-              {SKILLS.map((skill) => (
-                <Picker.Item
-                  key={skill.value}
-                  label={skill.label}
-                  value={skill.value}
-                />
-              ))}
-            </Picker>
-          </View>
+        <View style={styles.selectGroup}>
+          <Select
+            label="Kỹ năng yêu cầu *"
+            placeholder="-- Chọn kỹ năng --"
+            value={requiredSkill}
+            onChange={(value) => setRequiredSkill(value as SkillValue | '')}
+            options={SKILLS.map((skill) => ({
+              label: skill.label,
+              value: skill.value,
+            }))}
+          />
           {errors.requiredSkill && (
             <Text style={styles.errorText}>{errors.requiredSkill}</Text>
           )}
@@ -309,7 +300,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     paddingTop: spacing[3],
   },
-  pickerGroup: {
+  selectGroup: {
     marginBottom: spacing[4],
   },
   label: {
@@ -317,18 +308,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.medium,
     color: colors.text.primary,
     marginBottom: spacing[2],
-  },
-  required: {
-    color: colors.error[500],
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background.white,
-  },
-  picker: {
-    height: 50,
   },
   errorText: {
     color: colors.error[500],

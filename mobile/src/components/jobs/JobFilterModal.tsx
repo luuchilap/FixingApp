@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { Picker } from '@react-native-picker/picker';
+import { Select } from '../ui/Select';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { SKILLS, SkillValue } from '../../constants/skills';
 
@@ -120,28 +120,16 @@ export const JobFilterModal: React.FC<JobFilterModalProps> = ({
                   containerStyle={styles.inputContainer}
                 />
 
-                <View style={styles.pickerContainer}>
-                  <Text style={styles.label}>
-                    Kỹ năng yêu cầu
-                  </Text>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={category}
-                      onValueChange={(value) => setCategory(value)}
-                      style={styles.picker}
-                      enabled={true}
-                    >
-                      <Picker.Item label="-- Tất cả kỹ năng --" value="" />
-                      {SKILLS.map((skill) => (
-                        <Picker.Item
-                          key={skill.value}
-                          label={skill.label}
-                          value={skill.value}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
+                <Select
+                  label="Kỹ năng yêu cầu"
+                  placeholder="-- Tất cả kỹ năng --"
+                  value={category}
+                  onChange={(value) => setCategory(value as SkillValue | '')}
+                  options={SKILLS.map((skill) => ({
+                    label: skill.label,
+                    value: skill.value,
+                  }))}
+                />
 
                 <View style={styles.priceRow}>
                   <View style={styles.priceInput}>
@@ -249,25 +237,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: spacing[4],
-  },
-  pickerContainer: {
-    marginBottom: spacing[4],
-  },
-  label: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing[2],
-  },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background.white,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
   },
   priceRow: {
     flexDirection: 'row',

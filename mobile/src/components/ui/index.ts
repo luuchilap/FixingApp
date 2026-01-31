@@ -8,3 +8,6 @@ export type { InputProps, InputSize } from './Input';
 export { Card } from './Card';
 export type { CardProps, CardVariant } from './Card';
 
+export { Select } from './Select';
+export type { SelectOption } from './Select';
+

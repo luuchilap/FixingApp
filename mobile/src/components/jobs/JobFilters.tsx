@@ -9,11 +9,12 @@ import {
   UIManager,
   ActivityIndicator,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { Picker } from '@react-native-picker/picker';
+import { Select } from '../ui/Select';
 import { Card } from '../ui/Card';
 import { AddressAutocomplete } from '../ui/AddressAutocomplete';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
@@ -51,6 +52,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
   onClear,
 }) => {
   const { user } = useAuth();
+  const scrollViewRef = React.useRef<ScrollView>(null);
   const [keyword, setKeyword] = React.useState(filters.keyword || '');
   const [category, setCategory] = React.useState<SkillValue | ''>(filters.category || '');
   const [minPrice, setMinPrice] = React.useState(filters.minPrice?.toString() || '');
@@ -63,6 +65,35 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     filters.maxDistance ? filters.maxDistance.toString() as DistanceOption : ''
   );
   const [locationError, setLocationError] = React.useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
+  
+  // Listen to keyboard events to add padding
+  React.useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+  
+  // Scroll to bottom when address input is focused (to avoid keyboard covering)
+  const handleAddressFocus = () => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+  };
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
 
   // Update local state when filters prop changes
@@ -231,8 +262,14 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
       </View>
 
       {expanded && (
-        <ScrollView style={styles.scrollView} nestedScrollEnabled={true}>
-          <View style={styles.form}>
+          <ScrollView 
+            ref={scrollViewRef}
+            style={styles.scrollView} 
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={styles.form}>
             <Input
               label="Từ khóa tìm kiếm"
               placeholder="Tìm theo tiêu đề hoặc mô tả..."
@@ -241,28 +278,16 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
               containerStyle={styles.inputContainer}
             />
 
-            <View style={styles.pickerContainer}>
-              <Text style={styles.label}>
-                Kỹ năng yêu cầu
-              </Text>
-              <View style={styles.pickerWrapper}>
-                <Picker
-                  selectedValue={category}
-                  onValueChange={(value) => setCategory(value)}
-                  style={styles.picker}
-                  enabled={true}
-                >
-                  <Picker.Item label="-- Tất cả kỹ năng --" value="" />
-                  {SKILLS.map((skill) => (
-                    <Picker.Item
-                      key={skill.value}
-                      label={skill.label}
-                      value={skill.value}
-                    />
-                  ))}
-                </Picker>
-              </View>
-            </View>
+            <Select
+              label="Kỹ năng yêu cầu"
+              placeholder="-- Tất cả kỹ năng --"
+              value={category}
+              onChange={(value) => setCategory(value as SkillValue | '')}
+              options={SKILLS.map((skill) => ({
+                label: skill.label,
+                value: skill.value,
+              }))}
+            />
 
             <View style={styles.priceRow}>
               <View style={styles.priceInput}>
@@ -337,28 +362,19 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
                     }
                   }}
                   placeholder="Nhập địa chỉ để tìm kiếm..."
+                  onFocus={handleAddressFocus}
                 />
               </View>
 
               {(useLocation && (locationLat || locationAddress)) && (
                 <View style={styles.distanceContainer}>
-                  <Text style={styles.label}>Khoảng cách:</Text>
-                  <View style={styles.pickerWrapper}>
-                    <Picker
-                      selectedValue={distance}
-                      onValueChange={(value) => setDistance(value)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="-- Chọn khoảng cách --" value="" />
-                      {DISTANCE_OPTIONS.map((option) => (
-                        <Picker.Item
-                          key={option.value}
-                          label={option.label}
-                          value={option.value}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
+                  <Select
+                    label="Khoảng cách:"
+                    placeholder="-- Chọn khoảng cách --"
+                    value={distance}
+                    onChange={(value) => setDistance(value as DistanceOption)}
+                    options={DISTANCE_OPTIONS}
+                  />
                   {locationLat && locationLon && (
                     <Text style={styles.coordinatesText}>
                       Vị trí: {locationLat.toFixed(6)}, {locationLon.toFixed(6)}
@@ -371,6 +387,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
             <Button
               variant="primary"
               onPress={() => {
+                Keyboard.dismiss();
                 handleApply();
                 // collapse after applying to save space
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -381,6 +398,11 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
             >
               Lọc kết quả
             </Button>
+            
+            {/* Extra padding when keyboard is visible */}
+            {keyboardHeight > 0 && (
+              <View style={{ height: keyboardHeight }} />
+            )}
           </View>
         </ScrollView>
       )}
@@ -434,24 +456,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 0,
   },
-  pickerContainer: {
-    marginBottom: spacing[3],
-  },
   label: {
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     color: colors.text.primary,
     marginBottom: spacing[2],
-  },
-  pickerWrapper: {
-    borderWidth: 1,
-    borderColor: colors.border.default,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background.white,
-    overflow: 'hidden',
-  },
-  picker: {
-    height: 50,
   },
   priceRow: {
     flexDirection: 'row',

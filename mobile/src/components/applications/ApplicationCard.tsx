@@ -106,20 +106,26 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
         {/* Details */}
         <View style={styles.details}>
           {isWorkerView && application.job && (
-            <>
-              <Text style={styles.label}>Địa chỉ: {application.job.address}</Text>
-              <Text style={styles.label}>Trạng thái công việc: {application.job.status}</Text>
-            </>
+            <View>
+              {application.job.address ? (
+                <Text style={styles.label}>Địa chỉ: {application.job.address}</Text>
+              ) : null}
+              {application.job.status ? (
+                <Text style={styles.label}>Trạng thái công việc: {application.job.status}</Text>
+              ) : null}
+            </View>
           )}
           {isEmployerView && application.worker && (
-            <>
-              <Text style={styles.label}>Số điện thoại: {application.worker.phone}</Text>
-              {application.worker.address && (
+            <View>
+              {application.worker.phone ? (
+                <Text style={styles.label}>Số điện thoại: {application.worker.phone}</Text>
+              ) : null}
+              {application.worker.address ? (
                 <Text style={styles.label}>Địa chỉ: {application.worker.address}</Text>
-              )}
-              {application.worker.avgRating && (
+              ) : null}
+              {application.worker.avgRating != null && (
                 <Text style={styles.label}>
-                  Đánh giá: {application.worker.avgRating.toFixed(1)} ⭐
+                  Đánh giá: {Number(application.worker.avgRating).toFixed(1)} ⭐
                 </Text>
               )}
               {application.worker.isVerified && (
@@ -127,7 +133,7 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
                   <Text style={styles.verifiedText}>✓ Đã xác thực</Text>
                 </View>
               )}
-            </>
+            </View>
           )}
         </View>
 

@@ -66,10 +66,10 @@ export const getJobApplications = async (jobId: number): Promise<ApplicationWith
 
 /**
  * Get my applications (Worker only)
- * Note: The route is /jobs/my but requires WORKER role
+ * Uses /applications/my endpoint for workers
  */
 export const getMyApplications = async (): Promise<ApplicationWithJob[]> => {
-  const response = await api.get<ApplicationWithJob[]>('/jobs/my');
+  const response = await api.get<ApplicationWithJob[]>('/applications/my');
   return response.data;
 };
 

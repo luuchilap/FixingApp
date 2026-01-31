@@ -18,6 +18,7 @@ export interface AddressAutocompleteProps {
   required?: boolean;
   error?: string;
   label?: string;
+  onFocus?: () => void;
 }
 
 export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
@@ -27,6 +28,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   required = false,
   error,
   label,
+  onFocus: onFocusProp,
 }) => {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -149,6 +151,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     if (suggestions.length > 0) {
       setShowSuggestions(true);
     }
+    // Call parent onFocus handler (for keyboard avoidance)
+    onFocusProp?.();
   };
 
   return (

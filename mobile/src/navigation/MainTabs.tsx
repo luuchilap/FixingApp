@@ -99,8 +99,8 @@ export const MainTabs: React.FC = () => {
           name="Jobs"
           component={JobsScreen}
           options={{
-            title: 'Jobs',
-            tabBarLabel: 'Jobs',
+            title: userRole === 'EMPLOYER' ? 'Công việc đã đăng' : 'Jobs',
+            tabBarLabel: userRole === 'EMPLOYER' ? 'Đã đăng' : 'Jobs',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>💼</Text>

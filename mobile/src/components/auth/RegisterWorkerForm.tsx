@@ -9,11 +9,11 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../hooks/useAuth';
 import { validatePhone, validatePassword } from '../../utils/validation';
 import { SKILLS, SkillValue } from '../../constants/skills';
 import { AddressAutocomplete } from '../ui/AddressAutocomplete';
+import { Select } from '../ui/Select';
 
 interface RegisterWorkerFormProps {
   onSuccess?: () => void;
@@ -126,26 +126,17 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>
-            Main skill <Text style={styles.required}>*</Text>
-          </Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={skill || ''}
-              onValueChange={(value) => setSkill(value || null)}
-              style={styles.picker}
-              enabled={isLoading === false}
-            >
-              <Picker.Item label="-- Select skill --" value="" />
-              {SKILLS.map((skillOption) => (
-                <Picker.Item
-                  key={skillOption.value}
-                  label={skillOption.label}
-                  value={skillOption.value}
-                />
-              ))}
-            </Picker>
-          </View>
+          <Select
+            label="Main skill *"
+            placeholder="-- Select skill --"
+            value={skill || ''}
+            onChange={(value) => setSkill(value as SkillValue || null)}
+            options={SKILLS.map((skillOption) => ({
+              label: skillOption.label,
+              value: skillOption.value,
+            }))}
+            disabled={isLoading}
+          />
         </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
@@ -216,15 +207,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     backgroundColor: '#fff',
-  },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  picker: {
-    height: 50,
   },
   error: {
     color: '#dc2626',

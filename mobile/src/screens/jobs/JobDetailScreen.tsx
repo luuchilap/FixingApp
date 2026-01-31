@@ -17,9 +17,11 @@ import { getJobById } from '../../services/jobsApi';
 import {
   applyToJob,
   getJobApplications,
+  getMyApplications,
   acceptApplication,
   rejectApplication,
   ApplicationWithWorker,
+  ApplicationWithJob,
 } from '../../services/applicationsApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -75,11 +77,18 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const [applications, setApplications] = useState<ApplicationWithWorker[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
+  
+  // Track worker's application status for this job
+  const [myApplication, setMyApplication] = useState<ApplicationWithJob | null>(null);
+  const [checkingApplication, setCheckingApplication] = useState(false);
 
   useEffect(() => {
     loadJob();
     if (user?.role === 'EMPLOYER') {
       loadApplications();
+    }
+    if (user?.role === 'WORKER') {
+      checkMyApplication();
     }
   }, [jobId, user?.role]);
 
@@ -112,6 +121,22 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     }
   };
 
+  // Check if current worker has already applied to this job
+  const checkMyApplication = async () => {
+    if (user?.role !== 'WORKER') return;
+
+    try {
+      setCheckingApplication(true);
+      const myApplications = await getMyApplications();
+      const applicationForThisJob = myApplications.find(app => app.jobId === jobId);
+      setMyApplication(applicationForThisJob || null);
+    } catch (err: unknown) {
+      console.error('Error checking application status:', err);
+    } finally {
+      setCheckingApplication(false);
+    }
+  };
+
   const handleApply = async () => {
     if (!job) return;
 
@@ -125,15 +150,23 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
           onPress: async () => {
             try {
               setApplying(true);
-              await applyToJob(job.id);
-              Alert.alert('Thành công', 'Bạn đã ứng tuyển thành công!', [
-                {
-                  text: 'OK',
-                  onPress: () => {
-                    loadJob();
-                  },
+              const application = await applyToJob(job.id);
+              // Update local state to show "Đã ứng tuyển"
+              setMyApplication({
+                id: application.id,
+                jobId: application.jobId,
+                workerId: application.workerId,
+                status: application.status,
+                appliedAt: application.appliedAt,
+                job: {
+                  id: job.id,
+                  title: job.title,
+                  price: job.price,
+                  address: job.address,
+                  status: job.status,
                 },
-              ]);
+              });
+              Alert.alert('Thành công', 'Bạn đã ứng tuyển thành công!');
             } catch (err: unknown) {
               const errorMessage =
                 err instanceof Error ? err.message : 'Failed to apply';
@@ -227,7 +260,28 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
 
   const isEmployer = user?.role === 'EMPLOYER';
   const isWorker = user?.role === 'WORKER';
-  const canApply = isWorker && job.status === 'CHUA_LAM' && !job.acceptedWorkerId;
+  const hasApplied = myApplication !== null;
+  const canApply = isWorker && job.status === 'CHUA_LAM' && !job.acceptedWorkerId && !hasApplied;
+  
+  const getApplicationStatusLabel = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      'APPLIED': 'Đã ứng tuyển',
+      'ACCEPTED': 'Được chấp nhận',
+      'REJECTED': 'Bị từ chối',
+      'PENDING': 'Chờ xử lý',
+    };
+    return statusMap[status] || status;
+  };
+
+  const getApplicationStatusColor = (status: string): string => {
+    const colorMap: Record<string, string> = {
+      'APPLIED': colors.primary[500],
+      'ACCEPTED': colors.success[500],
+      'REJECTED': colors.error[500],
+      'PENDING': colors.warning[500],
+    };
+    return colorMap[status] || colors.neutral[500];
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -330,6 +384,25 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
             fullWidth
             size="lg"
           />
+        </View>
+      )}
+
+      {/* Show application status for worker who has applied */}
+      {isWorker && hasApplied && myApplication && (
+        <View style={styles.actions}>
+          <View style={[styles.applicationStatusCard, { borderColor: getApplicationStatusColor(myApplication.status) }]}>
+            <View style={[styles.applicationStatusBadge, { backgroundColor: getApplicationStatusColor(myApplication.status) }]}>
+              <Text style={styles.applicationStatusText}>
+                {getApplicationStatusLabel(myApplication.status)}
+              </Text>
+            </View>
+            <Text style={styles.applicationStatusNote}>
+              {myApplication.status === 'APPLIED' && 'Đơn ứng tuyển của bạn đang chờ xem xét.'}
+              {myApplication.status === 'ACCEPTED' && 'Chúc mừng! Bạn đã được chấp nhận cho công việc này.'}
+              {myApplication.status === 'REJECTED' && 'Rất tiếc, đơn ứng tuyển của bạn đã bị từ chối.'}
+              {myApplication.status === 'PENDING' && 'Đơn ứng tuyển của bạn đang được xử lý.'}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -473,6 +546,29 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     padding: spacing[4],
+  },
+  applicationStatusCard: {
+    backgroundColor: colors.background.white,
+    borderRadius: borderRadius.lg,
+    borderWidth: 2,
+    padding: spacing[4],
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  applicationStatusBadge: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.full,
+  },
+  applicationStatusText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.inverse,
+  },
+  applicationStatusNote: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
 });
 
