@@ -37,47 +37,12 @@ export const NotificationsScreen: React.FC = () => {
   const [lastMessageSender, setLastMessageSender] = useState<string | null>(null);
   const [showSystemNotifications, setShowSystemNotifications] = useState(false);
 
-  // Load notifications and unread counts
-  const loadData = useCallback(async () => {
+  // Load notifications only
+  const loadNotifications = useCallback(async () => {
     try {
-      const [notifs, conversations] = await Promise.all([
-        getNotifications(),
-        getConversations().catch(() => [] as Conversation[]),
-      ]);
-
+      const notifs = await getNotifications();
       setNotifications(notifs);
-
-      // Calculate total unread messages from all conversations
-      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      setMessageUnreadCount(totalUnread);
-
-      // Find the most recent conversation with last message
-      if (conversations.length > 0) {
-        // Sort by updatedAt to get the most recent
-        const sortedConversations = [...conversations].sort((a, b) => {
-          const aTime = typeof a.updatedAt === 'string' ? new Date(a.updatedAt).getTime() : (a.updatedAt || 0);
-          const bTime = typeof b.updatedAt === 'string' ? new Date(b.updatedAt).getTime() : (b.updatedAt || 0);
-          return bTime - aTime;
-        });
-        const recentConv = sortedConversations[0];
-        if (recentConv?.lastMessage?.content) {
-          setLastMessage(recentConv.lastMessage.content);
-          // Get sender name
-          const senderName = recentConv.lastMessage.senderId === recentConv.employerId
-            ? recentConv.employerName
-            : recentConv.workerName;
-          setLastMessageSender(senderName || null);
-        } else {
-          setLastMessage(null);
-          setLastMessageSender(null);
-        }
-      } else {
-        setLastMessage(null);
-        setLastMessageSender(null);
-      }
-
-      const unreadNotifs = notifs.filter((n) => !n.isRead).length;
-      setUnreadCount(unreadNotifs);
+      setUnreadCount(notifs.filter((n) => !n.isRead).length);
     } catch {
     } finally {
       setLoading(false);
@@ -85,32 +50,46 @@ export const NotificationsScreen: React.FC = () => {
     }
   }, []);
 
+  // Load message counts (called less frequently)
+  const loadMessageCounts = useCallback(async () => {
+    try {
+      const conversations = await getConversations();
+      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      setMessageUnreadCount(totalUnread);
+
+      // Get the most recent message preview
+      if (conversations.length > 0 && conversations[0]?.lastMessage?.content) {
+        const recentConv = conversations[0];
+        setLastMessage(recentConv.lastMessage.content);
+        const senderName = recentConv.lastMessage.senderId === recentConv.employerId
+          ? recentConv.employerName
+          : recentConv.workerName;
+        setLastMessageSender(senderName || null);
+      } else {
+        setLastMessage(null);
+        setLastMessageSender(null);
+      }
+    } catch {}
+  }, []);
+
+  // Initial load
   useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Poll for new notifications every 15 seconds
-  useEffect(() => {
-    if (!user) return;
-
-    const interval = setInterval(() => {
-      loadData();
-    }, 15000); // Poll every 15 seconds
-
-    return () => clearInterval(interval);
-  }, [user, loadData]);
+    loadNotifications();
+    loadMessageCounts();
+  }, [loadNotifications, loadMessageCounts]);
 
   // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      loadNotifications();
+      loadMessageCounts();
+    }, [loadNotifications, loadMessageCounts])
   );
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    loadData();
-  }, [loadData]);
+    Promise.all([loadNotifications(), loadMessageCounts()]);
+  }, [loadNotifications, loadMessageCounts]);
 
   const handleNotificationPress = (notification: Notification) => {
     // Mark as read if not already read

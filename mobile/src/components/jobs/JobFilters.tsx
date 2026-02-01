@@ -9,7 +9,6 @@ import {
   UIManager,
   ActivityIndicator,
   ScrollView,
-  Keyboard,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { Input } from '../ui/Input';
@@ -65,48 +64,8 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     filters.maxDistance ? filters.maxDistance.toString() as DistanceOption : ''
   );
   const [locationError, setLocationError] = React.useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
-  
-  // Listen to keyboard events to add padding
-  React.useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
-      }
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-  
-  // Scroll to bottom when address input is focused (to avoid keyboard covering)
-  const handleAddressFocus = () => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 300);
-  };
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
-
-  // Update local state when filters prop changes
-  React.useEffect(() => {
-    setKeyword(filters.keyword || '');
-    setCategory((filters.category as SkillValue) || '');
-    setMinPrice(filters.minPrice?.toString() || '');
-    setMaxPrice(filters.maxPrice?.toString() || '');
-    setLocationLat(filters.latitude);
-    setLocationLon(filters.longitude);
-    setDistance(filters.maxDistance ? filters.maxDistance.toString() as DistanceOption : '');
-    setUseLocation(!!(filters.latitude && filters.longitude && filters.maxDistance));
-  }, [filters]);
+  const [expanded, setExpanded] = React.useState(false);
 
   // Get user's current location
   const handleGetLocation = async () => {
@@ -226,9 +185,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     maxPrice.trim() || 
     (useLocation && locationLat && locationLon && distance);
 
-  const [expanded, setExpanded] = React.useState(false);
-
-  // Enable LayoutAnimation on Android
+  // Enable LayoutAnimation on Android (run once)
   React.useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       // @ts-ignore
@@ -357,7 +314,6 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
                     }
                   }}
                   placeholder="Nhập địa chỉ để tìm kiếm..."
-                  onFocus={handleAddressFocus}
                 />
               </View>
 
@@ -382,9 +338,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
             <Button
               variant="primary"
               onPress={() => {
-                Keyboard.dismiss();
                 handleApply();
-                // collapse after applying to save space
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                 setExpanded(false);
               }}
@@ -393,11 +347,6 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
             >
               Lọc kết quả
             </Button>
-            
-            {/* Extra padding when keyboard is visible */}
-            {keyboardHeight > 0 && (
-              <View style={{ height: keyboardHeight }} />
-            )}
           </View>
         </ScrollView>
       )}

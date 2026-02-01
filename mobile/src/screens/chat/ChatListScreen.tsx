@@ -43,13 +43,13 @@ export const ChatListScreen: React.FC = () => {
     loadConversations();
   }, [loadConversations]);
 
-  // Poll for new messages every 10 seconds
+  // Poll for new messages every 30 seconds
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
       loadConversations();
-    }, 10000); // Poll every 10 seconds
+    }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
   }, [user, loadConversations]);
