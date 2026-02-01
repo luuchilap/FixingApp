@@ -28,17 +28,24 @@ export const JobsListScreen: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<JobFiltersType>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const loadJobs = useCallback(async () => {
+  const loadJobs = useCallback(async (page = 1, append = false) => {
     try {
       setError(null);
+      if (append) {
+        setLoadingMore(true);
+      }
+      
       let jobsData: Job[];
 
       if (user?.role === 'EMPLOYER') {
         // Employers see their own jobs with filters
-        // Note: getMyJobs doesn't support filters, so we'll filter client-side
         const allJobs = await getMyJobs();
         
         // Apply client-side filtering for employers
@@ -68,7 +75,6 @@ export const JobsListScreen: React.FC = () => {
           const userLon = filters.longitude;
           const maxDist = filters.maxDistance;
           
-          // Calculate distance for each job and filter
           filtered = filtered
             .map((job) => {
               if (job.latitude != null && job.longitude != null) {
@@ -82,46 +88,58 @@ export const JobsListScreen: React.FC = () => {
               }
               return { ...job, distance: null };
             })
-            .filter((job) => {
-              // Only include jobs with valid distance within maxDistance
-              return job.distance != null && job.distance <= maxDist;
-            })
-            .sort((a, b) => {
-              // Sort by distance
-              const distA = a.distance || Infinity;
-              const distB = b.distance || Infinity;
-              return distA - distB;
-            });
+            .filter((job) => job.distance != null && job.distance <= maxDist)
+            .sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
         }
         
         jobsData = filtered;
+        setTotalCount(filtered.length);
+        setHasMore(false); // Employer data is not paginated from server
       } else {
-        // Workers see all available jobs with filters
-        const params: Parameters<typeof listJobs>[0] = {
+        // Workers see all available jobs with filters and pagination
+        const params = {
           status: 'CHUA_LAM',
           ...filters,
+          page,
+          limit: 10,
         };
-        jobsData = await listJobs(params);
+        const response = await listJobs(params);
+        jobsData = response.data;
+        setHasMore(response.pagination.hasMore);
+        setTotalCount(response.pagination.total);
+        setCurrentPage(page);
       }
 
-      setJobs(jobsData);
+      if (append) {
+        setJobs(prev => [...prev, ...jobsData]);
+      } else {
+        setJobs(jobsData);
+      }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách công việc';
       setError(errorMessage);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [user?.role, filters]);
 
   useEffect(() => {
-    loadJobs();
+    loadJobs(1, false);
   }, [loadJobs]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    loadJobs();
+    setCurrentPage(1);
+    loadJobs(1, false);
   }, [loadJobs]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore && user?.role !== 'EMPLOYER') {
+      loadJobs(currentPage + 1, true);
+    }
+  }, [loadJobs, loadingMore, hasMore, currentPage, user?.role]);
 
   const handleJobPress = (job: Job) => {
     navigation.navigate('JobDetail', { jobId: job.id });
@@ -140,6 +158,41 @@ export const JobsListScreen: React.FC = () => {
       </Text>
     </View>
   );
+
+  const renderFooter = () => {
+    if (user?.role === 'EMPLOYER') return null;
+    
+    return (
+      <View style={styles.footerContainer}>
+        {/* Pagination info */}
+        {jobs.length > 0 && (
+          <Text style={styles.paginationInfo}>
+            Hiển thị {jobs.length} / {totalCount} công việc
+          </Text>
+        )}
+        
+        {/* Load More Button */}
+        {hasMore && jobs.length > 0 && (
+          <TouchableOpacity
+            style={styles.loadMoreButton}
+            onPress={handleLoadMore}
+            disabled={loadingMore}
+          >
+            {loadingMore ? (
+              <ActivityIndicator size="small" color={colors.text.inverse} />
+            ) : (
+              <Text style={styles.loadMoreButtonText}>Tải thêm</Text>
+            )}
+          </TouchableOpacity>
+        )}
+        
+        {/* End of list message */}
+        {!hasMore && jobs.length > 0 && (
+          <Text style={styles.endOfListText}>Đã hiển thị tất cả công việc</Text>
+        )}
+      </View>
+    );
+  };
 
   const renderError = () => (
     <View style={styles.errorContainer}>
@@ -202,6 +255,7 @@ export const JobsListScreen: React.FC = () => {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -272,6 +326,33 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.error[500],
     textAlign: 'center',
+  },
+  footerContainer: {
+    paddingVertical: spacing[4],
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  paginationInfo: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+  },
+  loadMoreButton: {
+    backgroundColor: colors.primary[500],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[6],
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  loadMoreButtonText: {
+    color: colors.text.inverse,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  endOfListText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
   },
 });
 

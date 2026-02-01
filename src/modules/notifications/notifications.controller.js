@@ -6,21 +6,34 @@
 const db = require('../../config/db');
 
 /**
- * Get user's notifications
+ * Get user's notifications with pagination
  */
 async function getNotifications(req, res, next) {
   try {
     const userId = req.user.id;
-    const { unreadOnly } = req.query;
+    const { unreadOnly, page = 1, limit = 20 } = req.query;
 
-    let query = 'SELECT * FROM notifications WHERE user_id = $1';
+    // Parse pagination params
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 20));
+    const offset = (pageNum - 1) * limitNum;
+
+    let whereClause = 'WHERE user_id = $1';
     const params = [userId];
+    let paramIndex = 2;
 
     if (unreadOnly === 'true') {
-      query += ' AND is_read = FALSE';
+      whereClause += ' AND is_read = FALSE';
     }
 
-    query += ' ORDER BY created_at DESC LIMIT 50';
+    // Get total count
+    const countQuery = `SELECT COUNT(*) FROM notifications ${whereClause}`;
+    const countResult = await db.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Get paginated results
+    const query = `SELECT * FROM notifications ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(limitNum, offset);
 
     const notificationsResult = await db.query(query, params);
 
@@ -32,7 +45,16 @@ async function getNotifications(req, res, next) {
       createdAt: typeof notif.created_at === 'string' ? parseInt(notif.created_at, 10) : notif.created_at
     }));
 
-    res.status(200).json(formattedNotifications);
+    res.status(200).json({
+      data: formattedNotifications,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+        hasMore: pageNum < Math.ceil(totalCount / limitNum)
+      }
+    });
   } catch (error) {
     next(error);
   }

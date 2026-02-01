@@ -363,15 +363,40 @@ async function rejectWorker(req, res, next) {
 }
 
 /**
- * Get applications by current worker
- * Query params: jobStatus (optional) - filter by job status
+ * Get applications by current worker with pagination
+ * Query params: jobStatus (optional), page (default: 1), limit (default: 10)
  */
 async function getMyApplications(req, res, next) {
   try {
     const workerId = req.user.id;
-    const { jobStatus } = req.query;
+    const { jobStatus, page = 1, limit = 10 } = req.query;
 
-    let query = `
+    // Parse pagination params
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const offset = (pageNum - 1) * limitNum;
+
+    let whereClause = `WHERE ja.worker_id = $1`;
+    const params = [workerId];
+    let paramIndex = 2;
+    
+    // Add job status filter if provided
+    if (jobStatus && jobStatus !== '') {
+      whereClause += ` AND j.status = $${paramIndex++}`;
+      params.push(jobStatus);
+    }
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) FROM job_applications ja
+      JOIN jobs j ON ja.job_id = j.id
+      ${whereClause}
+    `;
+    const countResult = await db.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Get paginated results
+    const query = `
       SELECT 
         ja.*,
         j.title as job_title,
@@ -382,18 +407,11 @@ async function getMyApplications(req, res, next) {
       FROM job_applications ja
       JOIN jobs j ON ja.job_id = j.id
       LEFT JOIN users u ON j.employer_id = u.id
-      WHERE ja.worker_id = $1
+      ${whereClause}
+      ORDER BY ja.applied_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
     `;
-    
-    const params = [workerId];
-    
-    // Add job status filter if provided
-    if (jobStatus && jobStatus !== '') {
-      query += ` AND j.status = $2`;
-      params.push(jobStatus);
-    }
-    
-    query += ` ORDER BY ja.applied_at DESC`;
+    params.push(limitNum, offset);
 
     const applicationsResult = await db.query(query, params);
 
@@ -415,7 +433,16 @@ async function getMyApplications(req, res, next) {
       }
     }));
 
-    res.status(200).json(formattedApplications);
+    res.status(200).json({
+      data: formattedApplications,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+        hasMore: pageNum < Math.ceil(totalCount / limitNum)
+      }
+    });
   } catch (error) {
     next(error);
   }

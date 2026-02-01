@@ -52,6 +52,19 @@ export interface ApplicationWithWorker extends Application {
   };
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedApplications {
+  data: ApplicationWithJob[];
+  pagination: PaginationInfo;
+}
+
 /**
  * Apply to a job (Worker only)
  */
@@ -69,11 +82,14 @@ export const getJobApplications = async (jobId: number): Promise<ApplicationWith
 };
 
 /**
- * Get my applications (Worker only)
- * Uses /applications/my endpoint for workers
+ * Get my applications with pagination (Worker only)
  */
-export const getMyApplications = async (): Promise<ApplicationWithJob[]> => {
-  const response = await api.get<ApplicationWithJob[]>('/applications/my');
+export const getMyApplications = async (params?: { page?: number; limit?: number }): Promise<PaginatedApplications> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.page) queryParams.page = params.page.toString();
+  if (params?.limit) queryParams.limit = params.limit.toString();
+  
+  const response = await api.get<PaginatedApplications>('/applications/my', { params: queryParams });
   return response.data;
 };
 

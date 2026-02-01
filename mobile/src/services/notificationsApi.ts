@@ -8,13 +8,30 @@ export interface Notification {
   createdAt: number;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedNotifications {
+  data: Notification[];
+  pagination: PaginationInfo;
+}
+
 /**
- * Get user's notifications
+ * Get user's notifications with pagination
  */
-export const getNotifications = async (unreadOnly?: boolean): Promise<Notification[]> => {
-  const params = unreadOnly ? { unreadOnly: 'true' } : {};
-  const response = await api.get<Notification[]>('/notifications', { params });
-  return response.data;
+export const getNotifications = async (params?: { unreadOnly?: boolean; page?: number; limit?: number }): Promise<Notification[]> => {
+  const queryParams: Record<string, string> = {};
+  if (params?.unreadOnly) queryParams.unreadOnly = 'true';
+  if (params?.page) queryParams.page = params.page.toString();
+  if (params?.limit) queryParams.limit = params.limit.toString();
+  
+  const response = await api.get<PaginatedNotifications>('/notifications', { params: queryParams });
+  return response.data.data;
 };
 
 /**
@@ -29,7 +46,7 @@ export const markNotificationAsRead = async (notificationId: number): Promise<vo
  */
 export const markAllNotificationsAsRead = async (): Promise<void> => {
   // Get all unread notifications and mark them as read
-  const unreadNotifications = await getNotifications(true);
+  const unreadNotifications = await getNotifications({ unreadOnly: true, limit: 50 });
   await Promise.all(
     unreadNotifications.map((notif) => markNotificationAsRead(notif.id))
   );

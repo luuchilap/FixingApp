@@ -258,49 +258,63 @@ async function getJobById(req, res, next) {
 }
 
 /**
- * List jobs with filters
+ * List jobs with filters and pagination
  */
 async function listJobs(req, res, next) {
   try {
-    const { keyword, category, minPrice, maxPrice, latitude, longitude, maxDistance } = req.query;
+    const { keyword, category, minPrice, maxPrice, latitude, longitude, maxDistance, page = 1, limit = 10 } = req.query;
 
-    let query = `
-      SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
-      FROM jobs j
-      JOIN users u ON j.employer_id = u.id
-      WHERE j.status != 'DA_XONG'
-    `;
+    // Parse pagination params
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
+    const offset = (pageNum - 1) * limitNum;
+
+    let whereClause = `WHERE j.status != 'DA_XONG'`;
     const params = [];
     let paramIndex = 1;
 
     // Apply filters
     if (keyword) {
-      query += ` AND (j.title LIKE $${paramIndex++} OR j.description LIKE $${paramIndex++})`;
+      whereClause += ` AND (j.title LIKE $${paramIndex++} OR j.description LIKE $${paramIndex++})`;
       const keywordPattern = `%${keyword}%`;
       params.push(keywordPattern, keywordPattern);
     }
 
     if (category) {
-      query += ` AND j.required_skill = $${paramIndex++}`;
+      whereClause += ` AND j.required_skill = $${paramIndex++}`;
       params.push(category);
     }
 
     if (minPrice) {
-      query += ` AND j.price >= $${paramIndex++}`;
+      whereClause += ` AND j.price >= $${paramIndex++}`;
       params.push(parseInt(minPrice));
     }
 
     if (maxPrice) {
-      query += ` AND j.price <= $${paramIndex++}`;
+      whereClause += ` AND j.price <= $${paramIndex++}`;
       params.push(parseInt(maxPrice));
     }
 
     // Filter by location if provided
     if (latitude && longitude && maxDistance) {
-      query += ` AND j.latitude IS NOT NULL AND j.longitude IS NOT NULL`;
+      whereClause += ` AND j.latitude IS NOT NULL AND j.longitude IS NOT NULL`;
     }
 
-    query += ` ORDER BY j.created_at DESC`;
+    // Get total count first
+    const countQuery = `SELECT COUNT(*) FROM jobs j ${whereClause}`;
+    const countResult = await db.query(countQuery, params);
+    const totalCount = parseInt(countResult.rows[0].count);
+
+    // Get paginated results
+    const query = `
+      SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
+      FROM jobs j
+      JOIN users u ON j.employer_id = u.id
+      ${whereClause}
+      ORDER BY j.created_at DESC
+      LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+    `;
+    params.push(limitNum, offset);
 
     const jobsResult = await db.query(query, params);
 
@@ -369,7 +383,17 @@ async function listJobs(req, res, next) {
       }
     }
 
-    res.status(200).json(filteredJobs);
+    // Return paginated response
+    res.status(200).json({
+      data: filteredJobs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total: totalCount,
+        totalPages: Math.ceil(totalCount / limitNum),
+        hasMore: pageNum < Math.ceil(totalCount / limitNum)
+      }
+    });
   } catch (error) {
     next(error);
   }

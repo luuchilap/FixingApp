@@ -11,6 +11,8 @@ export interface ListJobsParams {
   latitude?: number;
   longitude?: number;
   maxDistance?: number;
+  page?: number;
+  limit?: number;
 }
 
 export interface JobWithImages extends Job {
@@ -19,11 +21,24 @@ export interface JobWithImages extends Job {
   images?: Array<{ type?: string; url: string }>;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: PaginationInfo;
+}
+
 /**
- * Get list of jobs with optional filters
+ * Get list of jobs with optional filters and pagination
  */
-export const listJobs = async (params?: ListJobsParams): Promise<JobWithImages[]> => {
-  const response = await api.get<JobWithImages[]>('/jobs', { params });
+export const listJobs = async (params?: ListJobsParams): Promise<PaginatedResponse<JobWithImages>> => {
+  const response = await api.get<PaginatedResponse<JobWithImages>>('/jobs', { params });
   return response.data;
 };
 

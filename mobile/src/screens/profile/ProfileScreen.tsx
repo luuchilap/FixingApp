@@ -41,40 +41,62 @@ export const ProfileScreen: React.FC = () => {
   // Applications state (Workers only - Employers see their jobs in Jobs tab)
   const [myApplications, setMyApplications] = useState<ApplicationWithJob[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [loadingMoreApps, setLoadingMoreApps] = useState(false);
+  const [appsPage, setAppsPage] = useState(1);
+  const [appsHasMore, setAppsHasMore] = useState(true);
+  const [appsTotalCount, setAppsTotalCount] = useState(0);
 
   const isEmployer = user?.role === 'EMPLOYER';
   const isWorker = user?.role === 'WORKER';
 
   useEffect(() => {
     loadProfile();
-    loadUserItems();
+    loadUserItems(1, false);
   }, []);
   
   // Refresh when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadUserItems();
+      loadUserItems(1, false);
     }, [user?.role])
   );
   
-  const loadUserItems = async () => {
+  const loadUserItems = async (page = 1, append = false) => {
     if (!user) return;
     
     // Only load applications for workers (employers see their jobs in the Jobs tab)
     if (isWorker) {
-      setLoadingItems(true);
+      if (append) {
+        setLoadingMoreApps(true);
+      } else {
+        setLoadingItems(true);
+      }
       try {
-        const applications = await getMyApplications();
-        setMyApplications(applications);
+        const response = await getMyApplications({ page, limit: 5 });
+        if (append) {
+          setMyApplications(prev => [...prev, ...response.data]);
+        } else {
+          setMyApplications(response.data);
+        }
+        setAppsPage(page);
+        setAppsHasMore(response.pagination.hasMore);
+        setAppsTotalCount(response.pagination.total);
       } catch {} finally {
         setLoadingItems(false);
+        setLoadingMoreApps(false);
       }
+    }
+  };
+
+  const handleLoadMoreApps = () => {
+    if (!loadingMoreApps && appsHasMore) {
+      loadUserItems(appsPage + 1, true);
     }
   };
   
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadProfile(), loadUserItems()]);
+    await Promise.all([loadProfile(), loadUserItems(1, false)]);
     setRefreshing(false);
   };
 
@@ -335,7 +357,12 @@ export const ProfileScreen: React.FC = () => {
       {/* My Applications Section - Workers only */}
       {isWorker && (
         <Card variant="default" padding={4} style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>Công việc đã ứng tuyển</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Công việc đã ứng tuyển</Text>
+            {appsTotalCount > 0 && (
+              <Text style={styles.countBadge}>{myApplications.length}/{appsTotalCount}</Text>
+            )}
+          </View>
           
           {loadingItems ? (
             <View style={styles.itemsLoading}>
@@ -383,6 +410,25 @@ export const ProfileScreen: React.FC = () => {
                   )}
                 </TouchableOpacity>
               ))}
+              
+              {/* Load More / End of list */}
+              <View style={styles.paginationContainer}>
+                {appsHasMore ? (
+                  <TouchableOpacity
+                    style={styles.loadMoreButton}
+                    onPress={handleLoadMoreApps}
+                    disabled={loadingMoreApps}
+                  >
+                    {loadingMoreApps ? (
+                      <ActivityIndicator size="small" color={colors.text.inverse} />
+                    ) : (
+                      <Text style={styles.loadMoreText}>Tải thêm</Text>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.endOfListText}>Đã hiển thị tất cả</Text>
+                )}
+              </View>
             </View>
           )}
         </Card>
@@ -538,5 +584,41 @@ const styles = StyleSheet.create({
   },
   emptyButton: {
     minWidth: 150,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+  countBadge: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    backgroundColor: colors.background.gray,
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.sm,
+  },
+  paginationContainer: {
+    alignItems: 'center',
+    paddingTop: spacing[3],
+  },
+  loadMoreButton: {
+    backgroundColor: colors.primary[500],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.md,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  loadMoreText: {
+    color: colors.text.inverse,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  endOfListText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    fontStyle: 'italic',
   },
 });
