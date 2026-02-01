@@ -84,8 +84,8 @@ export const MainTabs: React.FC = () => {
           name="Dashboard"
           component={DashboardScreen}
           options={{
-            title: 'Dashboard',
-            tabBarLabel: 'Dashboard',
+            title: 'Trang chủ',
+            tabBarLabel: 'Trang chủ',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>🏠</Text>
@@ -99,8 +99,8 @@ export const MainTabs: React.FC = () => {
           name="Jobs"
           component={JobsScreen}
           options={{
-            title: userRole === 'EMPLOYER' ? 'Công việc đã đăng' : 'Jobs',
-            tabBarLabel: userRole === 'EMPLOYER' ? 'Đã đăng' : 'Jobs',
+            title: userRole === 'EMPLOYER' ? 'Công việc đã đăng' : 'Công việc',
+            tabBarLabel: userRole === 'EMPLOYER' ? 'Đã đăng' : 'Công việc',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>💼</Text>
@@ -114,8 +114,8 @@ export const MainTabs: React.FC = () => {
           name="Notifications"
           component={NotificationsScreen}
           options={{
-            title: 'Notifications',
-            tabBarLabel: 'Notifications',
+            title: 'Thông báo',
+            tabBarLabel: 'Thông báo',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>🔔</Text>
@@ -136,8 +136,8 @@ export const MainTabs: React.FC = () => {
           name="Profile"
           component={ProfileScreen}
           options={{
-            title: 'Profile',
-            tabBarLabel: 'Profile',
+            title: 'Hồ sơ',
+            tabBarLabel: 'Hồ sơ',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
                 <Text style={[styles.icon, { color }]}>👤</Text>

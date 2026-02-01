@@ -29,7 +29,7 @@ async function getNotifications(req, res, next) {
       userId: notif.user_id,
       content: notif.content,
       isRead: notif.is_read === true,
-      createdAt: notif.created_at
+      createdAt: typeof notif.created_at === 'string' ? parseInt(notif.created_at, 10) : notif.created_at
     }));
 
     res.status(200).json(formattedNotifications);

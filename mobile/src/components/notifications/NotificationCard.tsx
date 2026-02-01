@@ -10,21 +10,53 @@ export interface NotificationCardProps {
   onMarkAsRead?: (notification: Notification) => void;
 }
 
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp);
+const parseTimestamp = (timestamp: number | string | null | undefined): Date | null => {
+  if (!timestamp) return null;
+  
+  let numValue: number;
+  if (typeof timestamp === 'string') {
+    numValue = Number(timestamp);
+    if (isNaN(numValue)) {
+      return new Date(timestamp);
+    }
+  } else {
+    numValue = timestamp;
+  }
+  
+  // If timestamp is in seconds (less than year 2001 in ms), convert to ms
+  if (numValue < 100000000000) {
+    return new Date(numValue * 1000);
+  }
+  return new Date(numValue);
+};
+
+const formatTime = (timestamp: number | string): string => {
+  const date = parseTimestamp(timestamp);
+  if (!date || isNaN(date.getTime())) return 'Vừa xong';
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) {
-    return 'Vừa xong';
-  } else if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
-  } else if (diffDays < 7) {
-    return `${diffDays} ngày trước`;
+  // If more than 1 day ago, show full date
+  if (diffDays >= 1) {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+  
+  // Less than 1 day
+  if (diffMinutes < 1) {
+    return `${diffSeconds} giây trước`;
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} phút trước`;
   } else {
-    return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
+    return `${diffHours} giờ trước`;
   }
 };
 

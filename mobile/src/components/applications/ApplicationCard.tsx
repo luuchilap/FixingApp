@@ -58,17 +58,27 @@ const formatDate = (timestamp: number | string | null | undefined): string => {
   
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) {
-    return 'Vừa xong';
-  } else if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
-  } else if (diffDays < 7) {
-    return `${diffDays} ngày trước`;
+  // If more than 1 day ago, show full date
+  if (diffDays >= 1) {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+  
+  // Less than 1 day
+  if (diffMinutes < 1) {
+    return `${diffSeconds} giây trước`;
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} phút trước`;
   } else {
-    return date.toLocaleDateString('vi-VN');
+    return `${diffHours} giờ trước`;
   }
 };
 
@@ -159,15 +169,31 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
           )}
         </View>
 
-        {/* Footer */}
+        {/* Footer - Timestamps */}
         <View style={styles.footer}>
-          <Text style={styles.time}>
-            {application.appliedAt
-              ? `Ứng tuyển: ${formatDate(application.appliedAt)}`
-              : application.createdAt
-              ? `Tạo: ${formatDate(new Date(application.createdAt).getTime())}`
-              : ''}
-          </Text>
+          {application.appliedAt && (
+            <Text style={styles.time}>
+              Ứng tuyển: {formatDate(application.appliedAt)}
+            </Text>
+          )}
+          {application.status === 'ACCEPTED' && (
+            <Text style={[styles.time, styles.acceptedTime]}>
+              Được chấp nhận: {application.acceptedAt 
+                ? formatDate(application.acceptedAt) 
+                : application.updatedAt 
+                ? formatDate(new Date(application.updatedAt).getTime())
+                : 'Vừa xong'}
+            </Text>
+          )}
+          {application.status === 'REJECTED' && (
+            <Text style={[styles.time, styles.rejectedTime]}>
+              Bị từ chối: {application.rejectedAt 
+                ? formatDate(application.rejectedAt) 
+                : application.updatedAt 
+                ? formatDate(new Date(application.updatedAt).getTime())
+                : 'Vừa xong'}
+            </Text>
+          )}
         </View>
 
         {/* Actions */}
@@ -257,10 +283,17 @@ const styles = StyleSheet.create({
   },
   footer: {
     marginTop: spacing[1],
+    gap: spacing[1],
   },
   time: {
     fontSize: typography.fontSize.xs,
     color: colors.text.tertiary,
+  },
+  acceptedTime: {
+    color: colors.success[600],
+  },
+  rejectedTime: {
+    color: colors.error[600],
   },
   actions: {
     flexDirection: 'row',

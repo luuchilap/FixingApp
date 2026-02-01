@@ -6,6 +6,7 @@
 const db = require('../../config/db');
 const { uploadToS3 } = require('./jobs.utils');
 const { geocode, calculateDistance } = require('../../utils/trackasia');
+const { sendNotification } = require('../notifications/notifications.controller');
 
 /**
  * Normalize skill value - maps skill values to standardized ones
@@ -212,6 +213,12 @@ async function createJob(req, res, next) {
 
     // Get created job with images
     const job = await getJobWithImages(jobId);
+
+    // Send notification to employer (confirmation)
+    await sendNotification(
+      employerId,
+      `Bạn đã đăng công việc "${title}"`
+    );
 
     res.status(201).json(job);
   } catch (error) {

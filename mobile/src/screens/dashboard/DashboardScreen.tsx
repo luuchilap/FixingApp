@@ -7,14 +7,14 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Dashboard</Text>
+      <Text style={styles.title}>Trang chủ</Text>
       <Text style={styles.subtitle}>
-        Welcome, {user?.fullName || user?.phone}!
+        Xin chào, {user?.fullName || user?.phone}!
       </Text>
-      <Text style={styles.roleText}>Role: {user?.role}</Text>
+      <Text style={styles.roleText}>Vai trò: {user?.role === 'EMPLOYER' ? 'Nhà tuyển dụng' : user?.role === 'WORKER' ? 'Người lao động' : user?.role}</Text>
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
-          This is your dashboard. Main app features will be implemented here.
+          Đây là trang chủ của bạn. Các tính năng chính của ứng dụng sẽ được hiển thị ở đây.
         </Text>
       </View>
     </ScrollView>

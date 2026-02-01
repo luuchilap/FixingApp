@@ -4,6 +4,7 @@
  */
 
 const db = require('../../config/db');
+const { sendNotification } = require('../notifications/notifications.controller');
 
 /**
  * Apply to a job
@@ -61,6 +62,22 @@ async function applyToJob(req, res, next) {
         RETURNING *
       `, [parseInt(jobId), workerId, now]);
       const application = result.rows[0];
+
+      // Get worker name for notification
+      const workerResult = await db.query('SELECT full_name, phone FROM users WHERE id = $1', [workerId]);
+      const workerName = workerResult.rows[0]?.full_name || workerResult.rows[0]?.phone || 'Một người lao động';
+
+      // Send notification to employer
+      await sendNotification(
+        job.employer_id,
+        `${workerName} vừa ứng tuyển công việc "${job.title}"`
+      );
+
+      // Send notification to worker (confirmation)
+      await sendNotification(
+        workerId,
+        `Bạn đã ứng tuyển công việc "${job.title}"`
+      );
 
       res.status(201).json({
         id: application.id,
@@ -133,6 +150,8 @@ async function getJobApplications(req, res, next) {
       workerId: app.worker_id,
       status: app.status,
       appliedAt: app.applied_at,
+      acceptedAt: app.accepted_at || null,
+      rejectedAt: app.rejected_at || null,
       worker: {
         id: app.worker_user_id,
         phone: app.worker_phone,
@@ -199,14 +218,18 @@ async function acceptWorker(req, res, next) {
 
     const now = Date.now();
 
+    // Get worker name for notification
+    const workerResult = await db.query('SELECT full_name, phone FROM users WHERE id = $1', [parseInt(workerId)]);
+    const workerName = workerResult.rows[0]?.full_name || workerResult.rows[0]?.phone || 'Ứng viên';
+
     // Update job and application in transaction
     await db.transaction(async (client) => {
-      // Update application status
+      // Update application status with accepted_at timestamp
       await client.query(`
         UPDATE job_applications 
-        SET status = 'ACCEPTED' 
+        SET status = 'ACCEPTED', accepted_at = $2 
         WHERE id = $1
-      `, [application.id]);
+      `, [application.id, now]);
 
       // Update job status and accepted worker
       await client.query(`
@@ -236,6 +259,18 @@ async function acceptWorker(req, res, next) {
       ]);
     });
 
+    // Send notification to worker
+    await sendNotification(
+      parseInt(workerId),
+      `Bạn đã được chấp nhận cho công việc "${job.title}"`
+    );
+
+    // Send notification to employer (confirmation)
+    await sendNotification(
+      employerId,
+      `Bạn đã chấp nhận ${workerName} cho công việc "${job.title}"`
+    );
+
     // Get updated job
     const updatedJobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
     const updatedJob = updatedJobResult.rows[0];
@@ -246,7 +281,8 @@ async function acceptWorker(req, res, next) {
       title: updatedJob.title,
       status: updatedJob.status,
       acceptedWorkerId: updatedJob.accepted_worker_id,
-      handoverDeadline: updatedJob.handover_deadline
+      handoverDeadline: updatedJob.handover_deadline,
+      acceptedAt: now
     });
   } catch (error) {
     next(error);
@@ -292,15 +328,34 @@ async function rejectWorker(req, res, next) {
     }
     const application = applicationResult.rows[0];
 
-    // Update application status
+    const now = Date.now();
+
+    // Get worker name for notification
+    const workerResult = await db.query('SELECT full_name, phone FROM users WHERE id = $1', [parseInt(workerId)]);
+    const workerName = workerResult.rows[0]?.full_name || workerResult.rows[0]?.phone || 'Ứng viên';
+
+    // Update application status with rejected_at timestamp
     await db.query(`
       UPDATE job_applications 
-      SET status = 'REJECTED' 
+      SET status = 'REJECTED', rejected_at = $2 
       WHERE id = $1
-    `, [application.id]);
+    `, [application.id, now]);
+
+    // Send notification to worker
+    await sendNotification(
+      parseInt(workerId),
+      `Bạn đã bị từ chối cho công việc "${job.title}"`
+    );
+
+    // Send notification to employer (confirmation)
+    await sendNotification(
+      employerId,
+      `Bạn đã từ chối ${workerName} cho công việc "${job.title}"`
+    );
 
     res.status(200).json({
-      message: 'Worker application rejected successfully'
+      message: 'Worker application rejected successfully',
+      rejectedAt: now
     });
   } catch (error) {
     next(error);
@@ -322,9 +377,11 @@ async function getMyApplications(req, res, next) {
         j.title as job_title,
         j.status as job_status,
         j.price as job_price,
-        j.address as job_address
+        j.address as job_address,
+        u.full_name as employer_name
       FROM job_applications ja
       JOIN jobs j ON ja.job_id = j.id
+      LEFT JOIN users u ON j.employer_id = u.id
       WHERE ja.worker_id = $1
     `;
     
@@ -346,12 +403,15 @@ async function getMyApplications(req, res, next) {
       workerId: app.worker_id,
       status: app.status,
       appliedAt: app.applied_at,
+      acceptedAt: app.accepted_at || null,
+      rejectedAt: app.rejected_at || null,
       job: {
         id: app.job_id,
         title: app.job_title,
         status: app.job_status,
         price: app.job_price,
-        address: app.job_address
+        address: app.job_address,
+        employerName: app.employer_name
       }
     }));
 

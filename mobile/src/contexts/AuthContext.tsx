@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
       throw new Error(
-        axiosError.response?.data?.message || axiosError.response?.data?.error || 'Login failed'
+        axiosError.response?.data?.message || axiosError.response?.data?.error || 'Đăng nhập thất bại'
       );
     } finally {
       setIsLoading(false);
@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
       throw new Error(
-        axiosError.response?.data?.message || axiosError.response?.data?.error || 'Registration failed'
+        axiosError.response?.data?.message || axiosError.response?.data?.error || 'Đăng ký thất bại'
       );
     } finally {
       setIsLoading(false);

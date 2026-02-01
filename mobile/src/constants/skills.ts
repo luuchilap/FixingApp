@@ -17,15 +17,15 @@ export interface SkillOption {
 }
 
 export const SKILLS: SkillOption[] = [
-  { value: 'PLUMBING', label: 'Plumbing' },
-  { value: 'ELECTRICAL', label: 'Electrical' },
-  { value: 'CARPENTRY', label: 'Carpentry' },
-  { value: 'PAINTING', label: 'Painting' },
-  { value: 'CLEANING', label: 'Cleaning' },
-  { value: 'AC_REPAIR', label: 'AC Repair' },
-  { value: 'APPLIANCE_REPAIR', label: 'Appliance Repair' },
-  { value: 'MASONRY', label: 'Masonry' },
-  { value: 'GARDENING', label: 'Gardening' },
-  { value: 'OTHER', label: 'Other' },
+  { value: 'PLUMBING', label: 'Thợ sửa ống nước' },
+  { value: 'ELECTRICAL', label: 'Thợ điện' },
+  { value: 'CARPENTRY', label: 'Thợ mộc' },
+  { value: 'PAINTING', label: 'Thợ sơn' },
+  { value: 'CLEANING', label: 'Dọn dẹp' },
+  { value: 'AC_REPAIR', label: 'Sửa điều hòa' },
+  { value: 'APPLIANCE_REPAIR', label: 'Sửa thiết bị' },
+  { value: 'MASONRY', label: 'Thợ xây' },
+  { value: 'GARDENING', label: 'Làm vườn' },
+  { value: 'OTHER', label: 'Khác' },
 ];
 

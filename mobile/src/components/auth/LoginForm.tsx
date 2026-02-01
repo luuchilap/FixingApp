@@ -27,17 +27,17 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onNavigateToReg
 
     // Validation
     if (!phone || !password) {
-      setError('Please enter phone and password');
+      setError('Vui lòng nhập số điện thoại và mật khẩu');
       return;
     }
 
     if (!validatePhone(phone)) {
-      setError('Please enter a valid phone number (10 digits, starts with 0)');
+      setError('Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0)');
       return;
     }
 
     if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters');
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -45,32 +45,32 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onNavigateToReg
       await login({ phone, password });
       onSuccess?.();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : 'Đăng nhập thất bại';
       setError(errorMessage);
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert('Đăng nhập thất bại', errorMessage);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Log in</Text>
+      <Text style={styles.title}>Đăng nhập</Text>
       <Text style={styles.subtitle}>
-        Use the phone number and password you registered with.
+        Sử dụng số điện thoại và mật khẩu bạn đã đăng ký.
       </Text>
 
       <View style={styles.sampleAccounts}>
-        <Text style={styles.sampleTitle}>Sample Accounts for Testing</Text>
+        <Text style={styles.sampleTitle}>Tài khoản mẫu để thử nghiệm</Text>
         <Text style={styles.sampleText}>
-          <Text style={styles.sampleLabel}>Employer:</Text> 0901234567 / password123
+          <Text style={styles.sampleLabel}>Nhà tuyển dụng:</Text> 0901234567 / password123
         </Text>
         <Text style={styles.sampleText}>
-          <Text style={styles.sampleLabel}>Worker:</Text> 0913456789 / password123
+          <Text style={styles.sampleLabel}>Người lao động:</Text> 0913456789 / password123
         </Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone</Text>
+          <Text style={styles.label}>Số điện thoại</Text>
           <TextInput
             style={styles.input}
             value={phone}
@@ -83,12 +83,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onNavigateToReg
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
+          <Text style={styles.label}>Mật khẩu</Text>
           <TextInput
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Enter your password"
+            placeholder="Nhập mật khẩu của bạn"
             secureTextEntry
             autoCapitalize="none"
             editable={!isLoading}
@@ -105,27 +105,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess, onNavigateToReg
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
+            <Text style={styles.buttonText}>Đăng nhập</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <View style={styles.registerSection}>
-        <Text style={styles.registerText}>Don't have an account?</Text>
+        <Text style={styles.registerText}>Chưa có tài khoản?</Text>
         <View style={styles.registerButtons}>
           <TouchableOpacity
             style={styles.registerButton}
             onPress={() => onNavigateToRegister?.('EMPLOYER')}
             disabled={isLoading}
           >
-            <Text style={styles.registerButtonText}>Register as Employer</Text>
+            <Text style={styles.registerButtonText}>Đăng ký làm Nhà tuyển dụng</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.registerButton}
             onPress={() => onNavigateToRegister?.('WORKER')}
             disabled={isLoading}
           >
-            <Text style={styles.registerButtonText}>Register as Worker</Text>
+            <Text style={styles.registerButtonText}>Đăng ký làm Người lao động</Text>
           </TouchableOpacity>
         </View>
       </View>

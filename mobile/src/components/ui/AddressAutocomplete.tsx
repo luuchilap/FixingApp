@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
+  ScrollView,
+  Pressable,
 } from 'react-native';
 import { autocomplete, getPlaceDetails, geocode, LocationSuggestion } from '../../services/trackasiaApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
@@ -37,9 +39,11 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const isSelectingRef = useRef(false); // Prevent re-triggering autocomplete after selection
 
-  // Sync input value with prop value
+  // Sync input value with prop value only when not selecting
   useEffect(() => {
-    setInputValue(value);
+    if (!isSelectingRef.current && value !== inputValue) {
+      setInputValue(value);
+    }
   }, [value]);
 
   // Debounced autocomplete
@@ -79,11 +83,19 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     };
   }, [inputValue]);
 
+  const handlePressIn = () => {
+    // Set flag immediately when user starts pressing to prevent blur from hiding suggestions
+    isSelectingRef.current = true;
+  };
+
   const handleSelect = async (suggestion: LocationSuggestion) => {
-    // Set flag to prevent re-triggering autocomplete
+    // Ensure flag is set
     isSelectingRef.current = true;
     
     const address = suggestion.fullAddress || suggestion.address;
+    
+    // Dismiss keyboard first
+    Keyboard.dismiss();
     
     // Close suggestions immediately
     setShowSuggestions(false);
@@ -91,9 +103,6 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     
     // Update input value immediately
     setInputValue(address);
-    
-    // Dismiss keyboard
-    Keyboard.dismiss();
     
     // Update parent component with address immediately
     onChange(address);
@@ -117,10 +126,10 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         } catch {}
       }
     } finally {
-      // Reset flag after a short delay to allow input to update
+      // Reset flag after a longer delay to ensure state is stable
       setTimeout(() => {
         isSelectingRef.current = false;
-      }, 500);
+      }, 800);
     }
   };
 
@@ -132,11 +141,12 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
   const handleInputBlur = () => {
     // Delay hiding suggestions to allow tap on suggestion
+    // Use longer delay to ensure touch events are processed first
     setTimeout(() => {
       if (!isSelectingRef.current) {
         setShowSuggestions(false);
       }
-    }, 200);
+    }, 500);
   };
 
   const handleInputFocus = () => {
@@ -176,21 +186,28 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       {error && <Text style={styles.errorText}>{error}</Text>}
 
       {showSuggestions && suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
+        <ScrollView
+          style={styles.suggestionsContainer}
+          keyboardShouldPersistTaps="always"
+          nestedScrollEnabled={true}
+        >
           {suggestions.map((item) => (
-            <TouchableOpacity
+            <Pressable
               key={item.id}
-              style={styles.suggestionItem}
+              style={({ pressed }) => [
+                styles.suggestionItem,
+                pressed && styles.suggestionItemPressed,
+              ]}
+              onTouchStart={handlePressIn}
               onPress={() => handleSelect(item)}
-              activeOpacity={0.7}
             >
               <Text style={styles.suggestionAddress}>{item.address}</Text>
               {item.fullAddress !== item.address && (
                 <Text style={styles.suggestionFullAddress}>{item.fullAddress}</Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           ))}
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -261,6 +278,10 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
+    backgroundColor: colors.background.white,
+  },
+  suggestionItemPressed: {
+    backgroundColor: colors.neutral[100],
   },
   suggestionAddress: {
     fontSize: typography.fontSize.base,

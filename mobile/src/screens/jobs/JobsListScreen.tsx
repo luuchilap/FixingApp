@@ -106,7 +106,7 @@ export const JobsListScreen: React.FC = () => {
 
       setJobs(jobsData);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load jobs';
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách công việc';
       setError(errorMessage);
     } finally {
       setLoading(false);

@@ -6,6 +6,10 @@ export interface Application {
   workerId: number;
   status: 'APPLIED' | 'ACCEPTED' | 'REJECTED' | 'PENDING';
   appliedAt: number;
+  acceptedAt?: number;
+  rejectedAt?: number;
+  createdAt?: string;
+  updatedAt?: string;
   worker?: {
     id: number;
     phone: string;

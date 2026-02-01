@@ -261,7 +261,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
             ref={scrollViewRef}
             style={styles.scrollView} 
             nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             showsVerticalScrollIndicator={true}
           >
             <View style={styles.form}>

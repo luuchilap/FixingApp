@@ -107,7 +107,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       const conv = await getConversation(conversationId);
       setConversation(conv);
       navigation.setOptions({
-        title: conv.workerName || conv.employerName || 'Chat',
+        title: conv.workerName || conv.employerName || 'Tin nhắn',
       });
     } catch {}
   };

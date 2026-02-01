@@ -49,7 +49,7 @@ export const ApplicationsScreen: React.FC = () => {
 
       setApplications(apps);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load applications';
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách ứng tuyển';
       setError(errorMessage);
     } finally {
       setLoading(false);

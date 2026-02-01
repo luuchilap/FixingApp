@@ -34,17 +34,17 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
 
     // Validation
     if (!phone || !password || !fullName || !skill || skill === '') {
-      setError('Please fill in all required fields');
+      setError('Vui lòng điền đầy đủ các trường bắt buộc');
       return;
     }
 
     if (!validatePhone(phone)) {
-      setError('Please enter a valid phone number (10 digits, starts with 0)');
+      setError('Vui lòng nhập số điện thoại hợp lệ (10 chữ số, bắt đầu bằng 0)');
       return;
     }
 
     if (!validatePassword(password)) {
-      setError('Password must be at least 6 characters');
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
 
@@ -59,23 +59,23 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
       });
       onSuccess?.();
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      const errorMessage = err instanceof Error ? err.message : 'Đăng ký thất bại';
       setError(errorMessage);
-      Alert.alert('Registration Failed', errorMessage);
+      Alert.alert('Đăng ký thất bại', errorMessage);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Register as Worker</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Đăng ký Người lao động</Text>
       <Text style={styles.subtitle}>
-        Create a worker account to find local jobs that match your skills.
+        Tạo tài khoản người lao động để tìm công việc phù hợp với kỹ năng của bạn.
       </Text>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Phone <Text style={styles.required}>*</Text>
+            Số điện thoại <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={styles.input}
@@ -90,13 +90,13 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Password <Text style={styles.required}>*</Text>
+            Mật khẩu <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            placeholder="Enter your password"
+            placeholder="Nhập mật khẩu của bạn"
             secureTextEntry
             autoCapitalize="none"
             editable={!isLoading}
@@ -105,30 +105,30 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>
-            Full name <Text style={styles.required}>*</Text>
+            Họ và tên <Text style={styles.required}>*</Text>
           </Text>
           <TextInput
             style={styles.input}
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Enter your full name"
+            placeholder="Nhập họ và tên của bạn"
             editable={!isLoading}
           />
         </View>
 
         <View style={styles.inputGroup}>
           <AddressAutocomplete
-            label="Address"
+            label="Địa chỉ"
             value={address}
             onChange={(addr) => setAddress(addr)}
-            placeholder="Enter your address (optional)"
+            placeholder="Nhập địa chỉ của bạn (không bắt buộc)"
           />
         </View>
 
         <View style={styles.inputGroup}>
           <Select
-            label="Main skill *"
-            placeholder="-- Select skill --"
+            label="Kỹ năng chính *"
+            placeholder="-- Chọn kỹ năng --"
             value={skill || ''}
             onChange={(value) => setSkill(value as SkillValue || null)}
             options={SKILLS.map((skillOption) => ({
@@ -149,7 +149,7 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
           {isLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Create worker account</Text>
+            <Text style={styles.buttonText}>Tạo tài khoản người lao động</Text>
           )}
         </TouchableOpacity>
 
@@ -159,7 +159,7 @@ export const RegisterWorkerForm: React.FC<RegisterWorkerFormProps> = ({ onSucces
             onPress={onNavigateToLogin}
             disabled={isLoading}
           >
-            <Text style={styles.backButtonText}>Back to Login</Text>
+            <Text style={styles.backButtonText}>Quay lại Đăng nhập</Text>
           </TouchableOpacity>
         )}
       </View>

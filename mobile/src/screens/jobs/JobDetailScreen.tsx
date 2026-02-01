@@ -57,10 +57,33 @@ const formatPrice = (price: number): string => {
   }).format(price);
 };
 
+const parseTimestamp = (timestamp: string | number | null | undefined): Date | null => {
+  if (!timestamp) return null;
+  
+  let numValue: number;
+  if (typeof timestamp === 'string') {
+    // Try to parse as number first
+    numValue = Number(timestamp);
+    if (isNaN(numValue)) {
+      // If not a number, try to parse as date string
+      const date = new Date(timestamp);
+      return isNaN(date.getTime()) ? null : date;
+    }
+  } else {
+    numValue = timestamp;
+  }
+  
+  // If timestamp is in seconds (less than year 2001 in ms), convert to ms
+  if (numValue < 100000000000) {
+    return new Date(numValue * 1000);
+  }
+  return new Date(numValue);
+};
+
 const formatDate = (dateString: string | number | null | undefined): string => {
   if (!dateString) return 'Chưa xác định';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Chưa xác định';
+  const date = parseTimestamp(dateString);
+  if (!date || isNaN(date.getTime())) return 'Chưa xác định';
   return date.toLocaleDateString('vi-VN', {
     year: 'numeric',
     month: 'long',
@@ -133,9 +156,9 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       const jobData = await getJobById(jobId);
       setJob(jobData);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load job details';
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải chi tiết công việc';
       setError(errorMessage);
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Lỗi', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -198,7 +221,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
               Alert.alert('Thành công', 'Bạn đã ứng tuyển thành công!');
             } catch (err: unknown) {
               const errorMessage =
-                err instanceof Error ? err.message : 'Failed to apply';
+                err instanceof Error ? err.message : 'Không thể ứng tuyển';
               Alert.alert('Lỗi', errorMessage);
             } finally {
               setApplying(false);
@@ -228,7 +251,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
               await loadApplications();
             } catch (err: unknown) {
               const errorMessage =
-                err instanceof Error ? err.message : 'Failed to accept application';
+                err instanceof Error ? err.message : 'Không thể chấp nhận đơn ứng tuyển';
               Alert.alert('Lỗi', errorMessage);
             } finally {
               setProcessingAction(false);
@@ -258,7 +281,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
               await loadApplications();
             } catch (err: unknown) {
               const errorMessage =
-                err instanceof Error ? err.message : 'Failed to reject application';
+                err instanceof Error ? err.message : 'Không thể từ chối đơn ứng tuyển';
               Alert.alert('Lỗi', errorMessage);
             } finally {
               setProcessingAction(false);
@@ -281,7 +304,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   if (error || !job) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || 'Job not found'}</Text>
+        <Text style={styles.errorText}>{error || 'Không tìm thấy công việc'}</Text>
         <Button title="Quay lại" onPress={() => navigation.goBack()} variant="outline" />
       </View>
     );

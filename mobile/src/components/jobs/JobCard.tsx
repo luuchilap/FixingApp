@@ -46,24 +46,55 @@ const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-const formatDate = (dateString: string | null | undefined): string => {
+const parseTimestamp = (timestamp: string | number | null | undefined): Date | null => {
+  if (!timestamp) return null;
+  
+  let numValue: number;
+  if (typeof timestamp === 'string') {
+    numValue = Number(timestamp);
+    if (isNaN(numValue)) {
+      const date = new Date(timestamp);
+      return isNaN(date.getTime()) ? null : date;
+    }
+  } else {
+    numValue = timestamp;
+  }
+  
+  // If timestamp is in seconds (less than year 2001 in ms), convert to ms
+  if (numValue < 100000000000) {
+    return new Date(numValue * 1000);
+  }
+  return new Date(numValue);
+};
+
+const formatDate = (dateString: string | number | null | undefined): string => {
   if (!dateString) return '';
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return '';
+  const date = parseTimestamp(dateString);
+  if (!date || isNaN(date.getTime())) return '';
   
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) {
-    return 'Vừa xong';
-  } else if (diffHours < 24) {
-    return `${diffHours} giờ trước`;
-  } else if (diffDays < 7) {
-    return `${diffDays} ngày trước`;
+  // If more than 1 day ago, show full date
+  if (diffDays >= 1) {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+  
+  // Less than 1 day
+  if (diffMinutes < 1) {
+    return `${diffSeconds} giây trước`;
+  } else if (diffMinutes < 60) {
+    return `${diffMinutes} phút trước`;
   } else {
-    return date.toLocaleDateString('vi-VN');
+    return `${diffHours} giờ trước`;
   }
 };
 

@@ -46,8 +46,8 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permission Required',
-        'We need permission to access your photos to upload job images.'
+        'Cần cấp quyền',
+        'Chúng tôi cần quyền truy cập ảnh của bạn để tải ảnh công việc lên.'
       );
       return false;
     }
@@ -56,7 +56,7 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
 
   const handlePickImage = async () => {
     if (images.length >= 5) {
-      Alert.alert('Limit Reached', 'You can upload up to 5 images.');
+      Alert.alert('Đã đạt giới hạn', 'Bạn có thể tải lên tối đa 5 ảnh.');
       return;
     }
 
@@ -81,7 +81,7 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
         setImages([...images, imageAsset]);
       }
     } catch {
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      Alert.alert('Lỗi', 'Không thể chọn ảnh. Vui lòng thử lại.');
     }
   };
 
@@ -164,7 +164,7 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
         },
       ]);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create job';
+      const errorMessage = error instanceof Error ? error.message : 'Không thể tạo công việc';
       Alert.alert('Lỗi', errorMessage);
     } finally {
       setLoading(false);
@@ -172,7 +172,7 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Đăng công việc mới</Text>
 
       <View style={styles.form}>

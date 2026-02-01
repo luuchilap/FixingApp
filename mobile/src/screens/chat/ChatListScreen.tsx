@@ -31,7 +31,7 @@ export const ChatListScreen: React.FC = () => {
       const data = await getConversations();
       setConversations(data);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load conversations';
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách hội thoại';
       setError(errorMessage);
     } finally {
       setLoading(false);

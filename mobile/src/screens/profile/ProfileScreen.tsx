@@ -88,8 +88,8 @@ export const ProfileScreen: React.FC = () => {
         address: userProfile.address || '',
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load profile';
-      Alert.alert('Error', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Không thể tải hồ sơ';
+      Alert.alert('Lỗi', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -144,7 +144,7 @@ export const ProfileScreen: React.FC = () => {
 
       Alert.alert('Thành công', 'Cập nhật thông tin thành công!');
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+      const errorMessage = error instanceof Error ? error.message : 'Không thể cập nhật hồ sơ';
       Alert.alert('Lỗi', errorMessage);
     } finally {
       setSaving(false);
@@ -199,10 +199,10 @@ export const ProfileScreen: React.FC = () => {
   }
 
   const displayProfile = profile || user;
-  const displayFullName = displayProfile?.fullName || 'N/A';
-  const displayPhone = displayProfile?.phone || user?.phone || 'N/A';
+  const displayFullName = displayProfile?.fullName || 'Chưa có';
+  const displayPhone = displayProfile?.phone || user?.phone || 'Chưa có';
   const displayAddress = displayProfile?.address || user?.address || '';
-  const displayRole = displayProfile?.role || user?.role || 'N/A';
+  const displayRole = displayProfile?.role || user?.role || 'Chưa có';
 
   const getRoleLabel = (role: string): string => {
     const roleMap: Record<string, string> = {
@@ -364,17 +364,17 @@ export const ProfileScreen: React.FC = () => {
                 >
                   <View style={styles.jobHeader}>
                     <Text style={styles.jobTitle} numberOfLines={2}>
-                      {application.job?.title || 'N/A'}
+                      {application.job?.title || 'Chưa có'}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) }]}>
                       <Text style={styles.statusText}>{getStatusLabel(application.status)}</Text>
                     </View>
                   </View>
                   <Text style={styles.jobPrice}>
-                    {application.job ? formatPrice(application.job.price) : 'N/A'}
+                    {application.job ? formatPrice(application.job.price) : 'Chưa có'}
                   </Text>
                   <Text style={styles.jobAddress} numberOfLines={1}>
-                    {application.job?.address || 'N/A'}
+                    {application.job?.address || 'Chưa có'}
                   </Text>
                   {application.job?.employerName && (
                     <Text style={styles.employerName}>

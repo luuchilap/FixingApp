@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,7 +20,7 @@ import {
   Notification,
 } from '../../services/notificationsApi';
 import { getConversations, Conversation } from '../../services/messagesApi';
-import { colors, spacing, typography } from '../../constants/designTokens';
+import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
@@ -35,6 +35,7 @@ export const NotificationsScreen: React.FC = () => {
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [lastMessageSender, setLastMessageSender] = useState<string | null>(null);
+  const [showSystemNotifications, setShowSystemNotifications] = useState(false);
 
   // Load notifications and unread counts
   const loadData = useCallback(async () => {
@@ -143,20 +144,6 @@ export const NotificationsScreen: React.FC = () => {
     navigation.navigate('ChatList');
   };
 
-  const renderNotificationItem = ({ item }: { item: Notification }) => (
-    <NotificationCard
-      notification={item}
-      onPress={handleNotificationPress}
-      onMarkAsRead={handleMarkAsRead}
-    />
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Không có thông báo nào.</Text>
-    </View>
-  );
-
   const unreadNotifications = notifications.filter((n) => !n.isRead);
 
   if (loading && !refreshing) {
@@ -168,25 +155,42 @@ export const NotificationsScreen: React.FC = () => {
     );
   }
 
-  return (
-    <View style={styles.container}>
-      {/* Header Actions */}
-      {unreadNotifications.length > 0 && (
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+  const lastSystemNotification = notifications.length > 0 ? notifications[0] : null;
 
-      {/* Chat Card */}
-      <View style={styles.chatCardContainer}>
-        <TouchableOpacity style={styles.chatCard} onPress={handleNavigateToChat}>
-          <View style={styles.chatCardContent}>
-            <Text style={styles.chatCardIcon}>💬</Text>
-            <View style={styles.chatCardInfo}>
-              <View style={styles.chatCardHeader}>
-                <Text style={styles.chatCardTitle}>Tin nhắn</Text>
+  const handleToggleSystemNotifications = async () => {
+    const willShow = !showSystemNotifications;
+    setShowSystemNotifications(willShow);
+    
+    // Auto mark all as read when expanding the notifications section
+    if (willShow && unreadCount > 0) {
+      try {
+        await markAllNotificationsAsRead();
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+        setUnreadCount(0);
+      } catch {}
+    }
+  };
+
+  return (
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          colors={[colors.primary[500]]}
+        />
+      }
+    >
+      {/* Cards Container */}
+      <View style={styles.cardsContainer}>
+        {/* Messages Card */}
+        <TouchableOpacity style={styles.notificationCard} onPress={handleNavigateToChat}>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardIcon}>💬</Text>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Tin nhắn</Text>
                 {messageUnreadCount > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>
@@ -195,37 +199,82 @@ export const NotificationsScreen: React.FC = () => {
                   </View>
                 )}
               </View>
-              <Text style={styles.chatCardSubtitle}>
+              <Text style={styles.cardSubtitle}>
                 {messageUnreadCount > 0
                   ? `${messageUnreadCount} tin nhắn chưa đọc`
                   : 'Không có tin nhắn mới'}
               </Text>
               {lastMessage && (
-                <Text style={styles.chatCardLastMessage} numberOfLines={1}>
+                <Text style={styles.cardLastMessage} numberOfLines={1}>
                   {lastMessageSender ? `${lastMessageSender}: ` : ''}{lastMessage}
                 </Text>
               )}
             </View>
+            <Text style={styles.cardArrow}>›</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* System Notifications Card */}
+        <TouchableOpacity style={styles.notificationCard} onPress={handleToggleSystemNotifications}>
+          <View style={styles.cardContent}>
+            <Text style={styles.cardIcon}>🔔</Text>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>Hệ thống</Text>
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.cardSubtitle}>
+                {unreadCount > 0
+                  ? `${unreadCount} thông báo chưa đọc`
+                  : 'Không có thông báo mới'}
+              </Text>
+              {lastSystemNotification && (
+                <Text style={styles.cardLastMessage} numberOfLines={1}>
+                  {lastSystemNotification.content}
+                </Text>
+              )}
+            </View>
+            <Text style={styles.cardArrow}>{showSystemNotifications ? '▾' : '›'}</Text>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Notifications List */}
-      <FlatList
-        data={notifications}
-        renderItem={renderNotificationItem}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={renderEmpty}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[colors.primary[500]]}
-          />
-        }
-      />
-    </View>
+      {/* System Notifications List - Expandable */}
+      {showSystemNotifications && (
+        <View style={styles.systemNotificationsContainer}>
+          {/* Header Actions */}
+          {unreadNotifications.length > 0 && (
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={handleMarkAllAsRead} style={styles.markAllButton}>
+                <Text style={styles.markAllText}>Đánh dấu tất cả đã đọc</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Notifications List */}
+          {notifications.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Không có thông báo nào.</Text>
+            </View>
+          ) : (
+            notifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onPress={handleNotificationPress}
+                onMarkAsRead={handleMarkAsRead}
+              />
+            ))
+          )}
+        </View>
+      )}
+    </ScrollView>
   );
 };
 
@@ -244,27 +293,13 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.base,
     color: colors.text.secondary,
   },
-  headerActions: {
+  cardsContainer: {
     padding: spacing[4],
-    paddingBottom: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.light,
+    gap: spacing[3],
   },
-  markAllButton: {
-    alignSelf: 'flex-end',
-  },
-  markAllText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.primary[500],
-    fontWeight: typography.fontWeight.medium,
-  },
-  chatCardContainer: {
-    padding: spacing[4],
-    paddingBottom: spacing[2],
-  },
-  chatCard: {
+  notificationCard: {
     backgroundColor: colors.background.white,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     padding: spacing[4],
     borderWidth: 1,
     borderColor: colors.border.light,
@@ -274,37 +309,42 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  chatCardContent: {
+  cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  chatCardIcon: {
+  cardIcon: {
     fontSize: 32,
     marginRight: spacing[3],
   },
-  chatCardInfo: {
+  cardInfo: {
     flex: 1,
   },
-  chatCardHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing[1],
   },
-  chatCardTitle: {
+  cardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.text.primary,
     marginRight: spacing[2],
   },
-  chatCardSubtitle: {
+  cardSubtitle: {
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
   },
-  chatCardLastMessage: {
+  cardLastMessage: {
     fontSize: typography.fontSize.sm,
     color: colors.text.tertiary,
     marginTop: spacing[1],
     fontStyle: 'italic',
+  },
+  cardArrow: {
+    fontSize: 24,
+    color: colors.text.tertiary,
+    marginLeft: spacing[2],
   },
   badge: {
     minWidth: 24,
@@ -320,12 +360,22 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeight.bold,
     color: colors.text.inverse,
   },
-  listContent: {
-    padding: spacing[4],
-    paddingTop: spacing[2],
+  systemNotificationsContainer: {
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[4],
+  },
+  headerActions: {
+    paddingBottom: spacing[3],
+  },
+  markAllButton: {
+    alignSelf: 'flex-end',
+  },
+  markAllText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.primary[500],
+    fontWeight: typography.fontWeight.medium,
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing[6],

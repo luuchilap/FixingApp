@@ -19,7 +19,7 @@ const getDevBaseUrl = () => {
 export const API_CONFIG = {
   BASE_URL: __DEV__
     ? getDevBaseUrl()
-    : 'https://your-production-api.com/api',
+    : 'https://fixing-app.vercel.app/api',
   TIMEOUT: 30000,
   STORAGE_KEYS: {
     AUTH_TOKEN: 'authToken',
