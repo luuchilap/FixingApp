@@ -8,7 +8,7 @@ export interface Message {
   content: string;
   messageType: 'TEXT' | 'IMAGE' | 'FILE';
   isRead: boolean;
-  createdAt: number;
+  createdAt: number | string;
 }
 
 export interface Conversation {
@@ -25,11 +25,11 @@ export interface Conversation {
     id: number;
     content: string;
     senderId: number;
-    createdAt: number;
+    createdAt: number | string;
   };
   unreadCount: number;
-  updatedAt: number;
-  createdAt: number;
+  updatedAt: number | string;
+  createdAt: number | string;
 }
 
 export interface MessagesResponse {

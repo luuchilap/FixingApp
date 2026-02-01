@@ -33,7 +33,6 @@ export const ChatListScreen: React.FC = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load conversations';
       setError(errorMessage);
-      console.error('Error loading conversations:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

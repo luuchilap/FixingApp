@@ -46,9 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
       }
-    } catch (error) {
-      console.error('Error loading stored auth:', error);
-    } finally {
+    } catch {} finally {
       setIsLoading(false);
     }
   };
@@ -71,7 +69,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(newUser);
       setIsAuthenticated(true);
     } catch (error: unknown) {
-      console.error('Login error:', error);
       const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
       throw new Error(
         axiosError.response?.data?.message || axiosError.response?.data?.error || 'Login failed'
@@ -103,7 +100,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(newUser);
       setIsAuthenticated(true);
     } catch (error: unknown) {
-      console.error('Registration error:', error);
       const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
       throw new Error(
         axiosError.response?.data?.message || axiosError.response?.data?.error || 'Registration failed'
@@ -115,25 +111,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Call logout endpoint (optional in MVP)
       try {
         await api.post('/auth/logout');
-      } catch (error) {
-        // Ignore logout API errors in MVP
-        console.log('Logout API call failed (expected in MVP)');
-      }
+      } catch {}
 
-      // Clear storage
       await storage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
       await storage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
 
-      // Clear state
       setToken(null);
       setUser(null);
       setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Even if there's an error, clear local state
+    } catch {
       await storage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
       await storage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
       setToken(null);
@@ -150,7 +138,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await storage.setItem(API_CONFIG.STORAGE_KEYS.USER, JSON.stringify(updatedUser));
       setUser(updatedUser);
     } catch (error: unknown) {
-      console.error('Error refreshing user:', error);
       // If refresh fails, user might be logged out
       const axiosError = error as { response?: { status?: number } };
       if (axiosError.response?.status === 401) {

@@ -25,15 +25,42 @@ import { MainStackParamList } from '../../navigation/MainStack';
 
 type ChatScreenProps = NativeStackScreenProps<MainStackParamList, 'Chat'>;
 
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp);
+const parseTimestamp = (timestamp: number | string | null | undefined): Date => {
+  if (!timestamp) return new Date(NaN);
+  
+  // If it's a string, try to parse it
+  if (typeof timestamp === 'string') {
+    // Check if it's a numeric string (Unix timestamp as string)
+    const numValue = Number(timestamp);
+    if (!isNaN(numValue)) {
+      // It's a numeric string, treat as Unix timestamp
+      if (numValue < 100000000000) {
+        return new Date(numValue * 1000); // seconds to ms
+      }
+      return new Date(numValue);
+    }
+    // Otherwise parse as date string
+    return new Date(timestamp);
+  }
+  
+  // If it's a number
+  if (timestamp < 100000000000) {
+    return new Date(timestamp * 1000); // seconds to ms
+  }
+  return new Date(timestamp);
+};
+
+const formatTime = (timestamp: number | string): string => {
+  const date = parseTimestamp(timestamp);
+  if (isNaN(date.getTime())) return '';
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 };
 
-const formatDate = (timestamp: number): string => {
-  const date = new Date(timestamp);
+const formatDate = (timestamp: number | string): string => {
+  const date = parseTimestamp(timestamp);
+  if (isNaN(date.getTime())) return '';
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -82,9 +109,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       navigation.setOptions({
         title: conv.workerName || conv.employerName || 'Chat',
       });
-    } catch (error) {
-      console.error('Error loading conversation:', error);
-    }
+    } catch {}
   };
 
   const loadMessages = async (silent = false, loadOlder = false) => {
@@ -113,9 +138,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       }
 
       setHasMore(response.hasMore);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    } finally {
+    } catch {} finally {
       setLoading(false);
     }
   };
@@ -123,9 +146,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const markAsRead = async () => {
     try {
       await markConversationAsRead(conversationId);
-    } catch (error) {
-      console.error('Error marking as read:', error);
-    }
+    } catch {}
   };
 
   const handleSend = async () => {
@@ -148,9 +169,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessageText(text); // Restore message text on error
+    } catch {
+      setMessageText(text);
     } finally {
       setSending(false);
     }

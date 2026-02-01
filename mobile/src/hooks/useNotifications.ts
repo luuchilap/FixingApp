@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getNotifications, Notification } from '../services/notificationsApi';
-import { getTotalUnreadCount } from '../services/messagesApi';
+import { getConversations } from '../services/messagesApi';
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -10,18 +10,23 @@ export const useNotifications = () => {
 
   const loadNotifications = useCallback(async () => {
     try {
-      const [notifs, messageCount] = await Promise.all([
+      const [notifs, conversations] = await Promise.all([
         getNotifications(),
-        getTotalUnreadCount().catch(() => 0),
+        getConversations().catch(() => []),
       ]);
 
       setNotifications(notifs);
-      setMessageUnreadCount(messageCount);
+      
+      // Calculate total unread messages from all conversations
+      const totalMessageUnread = conversations.reduce(
+        (sum, conv) => sum + (conv.unreadCount || 0),
+        0
+      );
+      setMessageUnreadCount(totalMessageUnread);
 
       const unreadNotifs = notifs.filter((n) => !n.isRead).length;
       setUnreadCount(unreadNotifs);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
+    } catch {
     } finally {
       setLoading(false);
     }

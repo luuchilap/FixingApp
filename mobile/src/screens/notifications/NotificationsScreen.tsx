@@ -19,7 +19,7 @@ import {
   markAllNotificationsAsRead,
   Notification,
 } from '../../services/notificationsApi';
-import { getTotalUnreadCount } from '../../services/messagesApi';
+import { getConversations, Conversation } from '../../services/messagesApi';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -33,22 +33,51 @@ export const NotificationsScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [messageUnreadCount, setMessageUnreadCount] = useState(0);
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
+  const [lastMessageSender, setLastMessageSender] = useState<string | null>(null);
 
   // Load notifications and unread counts
   const loadData = useCallback(async () => {
     try {
-      const [notifs, messageCount] = await Promise.all([
+      const [notifs, conversations] = await Promise.all([
         getNotifications(),
-        getTotalUnreadCount().catch(() => 0),
+        getConversations().catch(() => [] as Conversation[]),
       ]);
 
       setNotifications(notifs);
-      setMessageUnreadCount(messageCount);
+
+      // Calculate total unread messages from all conversations
+      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      setMessageUnreadCount(totalUnread);
+
+      // Find the most recent conversation with last message
+      if (conversations.length > 0) {
+        // Sort by updatedAt to get the most recent
+        const sortedConversations = [...conversations].sort((a, b) => {
+          const aTime = typeof a.updatedAt === 'string' ? new Date(a.updatedAt).getTime() : (a.updatedAt || 0);
+          const bTime = typeof b.updatedAt === 'string' ? new Date(b.updatedAt).getTime() : (b.updatedAt || 0);
+          return bTime - aTime;
+        });
+        const recentConv = sortedConversations[0];
+        if (recentConv?.lastMessage?.content) {
+          setLastMessage(recentConv.lastMessage.content);
+          // Get sender name
+          const senderName = recentConv.lastMessage.senderId === recentConv.employerId
+            ? recentConv.employerName
+            : recentConv.workerName;
+          setLastMessageSender(senderName || null);
+        } else {
+          setLastMessage(null);
+          setLastMessageSender(null);
+        }
+      } else {
+        setLastMessage(null);
+        setLastMessageSender(null);
+      }
 
       const unreadNotifs = notifs.filter((n) => !n.isRead).length;
       setUnreadCount(unreadNotifs);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
+    } catch {
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -99,20 +128,15 @@ export const NotificationsScreen: React.FC = () => {
       );
       // Update unread count
       setUnreadCount((prev) => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
+    } catch {}
   };
 
   const handleMarkAllAsRead = async () => {
     try {
       await markAllNotificationsAsRead();
-      // Update local state
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
+    } catch {}
   };
 
   const handleNavigateToChat = () => {
@@ -161,20 +185,27 @@ export const NotificationsScreen: React.FC = () => {
           <View style={styles.chatCardContent}>
             <Text style={styles.chatCardIcon}>💬</Text>
             <View style={styles.chatCardInfo}>
-              <Text style={styles.chatCardTitle}>Tin nhắn</Text>
+              <View style={styles.chatCardHeader}>
+                <Text style={styles.chatCardTitle}>Tin nhắn</Text>
+                {messageUnreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {messageUnreadCount > 99 ? '99+' : messageUnreadCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.chatCardSubtitle}>
                 {messageUnreadCount > 0
                   ? `${messageUnreadCount} tin nhắn chưa đọc`
                   : 'Không có tin nhắn mới'}
               </Text>
-            </View>
-            {messageUnreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {messageUnreadCount > 99 ? '99+' : messageUnreadCount}
+              {lastMessage && (
+                <Text style={styles.chatCardLastMessage} numberOfLines={1}>
+                  {lastMessageSender ? `${lastMessageSender}: ` : ''}{lastMessage}
                 </Text>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </TouchableOpacity>
       </View>
@@ -254,15 +285,26 @@ const styles = StyleSheet.create({
   chatCardInfo: {
     flex: 1,
   },
+  chatCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[1],
+  },
   chatCardTitle: {
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
     color: colors.text.primary,
-    marginBottom: spacing[1],
+    marginRight: spacing[2],
   },
   chatCardSubtitle: {
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
+  },
+  chatCardLastMessage: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    marginTop: spacing[1],
+    fontStyle: 'italic',
   },
   badge: {
     minWidth: 24,

@@ -1,20 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { LoginForm } from '../../components/auth/LoginForm';
-import { useAuth } from '../../hooks/useAuth';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 
 type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const { user } = useAuth();
-
-  const handleSuccess = () => {
-    // Navigation will be handled by the navigation system
-    // based on user role after login
-    console.log('Login successful, user:', user);
-  };
+  const handleSuccess = () => {};
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>

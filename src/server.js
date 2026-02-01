@@ -18,7 +18,6 @@ async function startServer() {
       console.log(`Server running on port ${PORT}`);
       console.log(`Health check available at http://localhost:${PORT}/health`);
       console.log(`Swagger UI available at http://localhost:${PORT}/api-docs`);
-      console.log(`Network: http://10.0.214.66:${PORT} (for mobile devices)`);
     });
 
     // Graceful shutdown

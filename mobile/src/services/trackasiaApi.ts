@@ -21,7 +21,6 @@ export interface LocationSuggestion {
  */
 export async function autocomplete(query: string, limit = 5): Promise<LocationSuggestion[]> {
   if (!TRACKASIA_API_KEY) {
-    console.warn('TRACKASIA_API_KEY not configured');
     return [];
   }
 
@@ -47,7 +46,6 @@ export async function autocomplete(query: string, limit = 5): Promise<LocationSu
     });
 
     if (!response.ok) {
-      console.error('TrackAsia autocomplete error:', response.status);
       return [];
     }
 
@@ -67,8 +65,7 @@ export async function autocomplete(query: string, limit = 5): Promise<LocationSu
     }
 
     return [];
-  } catch (error) {
-    console.error('Error in TrackAsia autocomplete:', error);
+  } catch {
     return [];
   }
 }
@@ -118,7 +115,6 @@ export async function getPlaceDetails(placeId: string): Promise<{ latitude: numb
 
     throw new Error('No results found for place_id');
   } catch (error) {
-    console.error('Error in TrackAsia getPlaceDetails:', error);
     throw error;
   }
 }
@@ -161,7 +157,6 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
 
     throw new Error('No results found for coordinates');
   } catch (error) {
-    console.error('Error in TrackAsia reverseGeocode:', error);
     throw error;
   }
 }
@@ -195,8 +190,6 @@ export async function geocode(address: string): Promise<{ latitude: number; long
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('TrackAsia geocode API error:', response.status, errorText);
       throw new Error(`TrackAsia API error: ${response.status}`);
     }
 
@@ -219,7 +212,6 @@ export async function geocode(address: string): Promise<{ latitude: number; long
 
     throw new Error(`Geocoding failed: ${data.status || 'Unknown error'}`);
   } catch (error) {
-    console.error('Error in TrackAsia geocode:', error);
     throw error;
   }
 }

@@ -65,8 +65,7 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         const results = await autocomplete(inputValue, 5);
         setSuggestions(results);
         setShowSuggestions(results.length > 0 && !isSelectingRef.current);
-      } catch (error) {
-        console.error('Autocomplete error:', error);
+      } catch {
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -105,24 +104,17 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         try {
           const placeDetails = await getPlaceDetails(suggestion.placeId);
           onChange(address, placeDetails.latitude, placeDetails.longitude);
-        } catch (error) {
-          console.error('Place details error:', error);
-          // Fallback to geocoding
+        } catch {
           try {
             const geocodeResult = await geocode(address);
             onChange(address, geocodeResult.latitude, geocodeResult.longitude);
-          } catch (geocodeError) {
-            console.error('Geocoding error:', geocodeError);
-          }
+          } catch {}
         }
       } else {
-        // If no place_id, try geocoding
         try {
           const geocodeResult = await geocode(address);
           onChange(address, geocodeResult.latitude, geocodeResult.longitude);
-        } catch (geocodeError) {
-          console.error('Geocoding error:', geocodeError);
-        }
+        } catch {}
       }
     } finally {
       // Reset flag after a short delay to allow input to update

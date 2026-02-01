@@ -51,7 +51,6 @@ export const ApplicationsScreen: React.FC = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load applications';
       setError(errorMessage);
-      console.error('Error loading applications:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);

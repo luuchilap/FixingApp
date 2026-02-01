@@ -137,12 +137,8 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
       try {
         const address = await reverseGeocode(lat, lon);
         setLocationAddress(address);
-      } catch (error) {
-        console.error('Reverse geocoding error:', error);
-        // Still use coordinates even if reverse geocoding fails
-      }
-    } catch (error) {
-      console.error('Geolocation error:', error);
+      } catch {}
+    } catch {
       setLocationError('Không thể lấy vị trí. Vui lòng nhập địa chỉ thủ công.');
     } finally {
       setIsGettingLocation(false);
@@ -171,8 +167,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
       setLocationLon(geocodeResult.longitude);
       setUseLocation(true);
       setLocationError(null);
-    } catch (error) {
-      console.error('Geocoding error:', error);
+    } catch {
       setLocationError('Không thể lấy tọa độ từ địa chỉ đã đăng ký. Vui lòng nhập địa chỉ thủ công.');
     } finally {
       setIsGettingLocation(false);

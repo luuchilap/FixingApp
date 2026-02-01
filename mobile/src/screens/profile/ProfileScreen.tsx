@@ -66,9 +66,7 @@ export const ProfileScreen: React.FC = () => {
       try {
         const applications = await getMyApplications();
         setMyApplications(applications);
-      } catch (error) {
-        console.error('Error loading items:', error);
-      } finally {
+      } catch {} finally {
         setLoadingItems(false);
       }
     }
@@ -91,7 +89,6 @@ export const ProfileScreen: React.FC = () => {
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load profile';
-      console.error('Error loading profile:', error);
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -149,7 +146,6 @@ export const ProfileScreen: React.FC = () => {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
       Alert.alert('Lỗi', errorMessage);
-      console.error('Error updating profile:', error);
     } finally {
       setSaving(false);
     }
@@ -162,8 +158,7 @@ export const ProfileScreen: React.FC = () => {
       if (confirmed) {
         try {
           await logout();
-        } catch (error) {
-          console.error('Logout error:', error);
+        } catch {
           window.alert('Không thể đăng xuất. Vui lòng thử lại.');
         }
       }
@@ -183,8 +178,7 @@ export const ProfileScreen: React.FC = () => {
             onPress: async () => {
               try {
                 await logout();
-              } catch (error) {
-                console.error('Logout error:', error);
+              } catch {
                 Alert.alert('Lỗi', 'Không thể đăng xuất. Vui lòng thử lại.');
               }
             },

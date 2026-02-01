@@ -10,4 +10,3 @@ export type { CardProps, CardVariant } from './Card';
 
 export { Select } from './Select';
 export type { SelectOption } from './Select';
-

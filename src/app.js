@@ -34,12 +34,14 @@ app.use((req, res, next) => {
   express.urlencoded({ extended: true, limit: '500mb' })(req, res, next);
 });
 
-// Request logging middleware (simple version for MVP)
-app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] ${req.method} ${req.path}`);
-  next();
-});
+// Request logging middleware (development only)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.path}`);
+    next();
+  });
+}
 
 // Swagger UI documentation
 setupSwagger(app);

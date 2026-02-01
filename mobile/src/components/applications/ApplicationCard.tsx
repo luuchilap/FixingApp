@@ -32,8 +32,30 @@ const getStatusColor = (status: string): string => {
   return colorMap[status] || colors.neutral[500];
 };
 
-const formatDate = (timestamp: number): string => {
-  const date = new Date(timestamp);
+const parseTimestamp = (timestamp: number | string | null | undefined): Date | null => {
+  if (!timestamp) return null;
+  
+  if (typeof timestamp === 'string') {
+    const numValue = Number(timestamp);
+    if (!isNaN(numValue)) {
+      if (numValue < 100000000000) {
+        return new Date(numValue * 1000);
+      }
+      return new Date(numValue);
+    }
+    return new Date(timestamp);
+  }
+  
+  if (timestamp < 100000000000) {
+    return new Date(timestamp * 1000);
+  }
+  return new Date(timestamp);
+};
+
+const formatDate = (timestamp: number | string | null | undefined): string => {
+  const date = parseTimestamp(timestamp);
+  if (!date || isNaN(date.getTime())) return 'Chưa xác định';
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));

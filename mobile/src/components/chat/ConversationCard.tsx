@@ -9,8 +9,30 @@ export interface ConversationCardProps {
   onPress: (conversation: Conversation) => void;
 }
 
-const formatTime = (timestamp: number): string => {
-  const date = new Date(timestamp);
+const parseTimestamp = (timestamp: number | string | null | undefined): Date => {
+  if (!timestamp) return new Date(NaN);
+  
+  if (typeof timestamp === 'string') {
+    const numValue = Number(timestamp);
+    if (!isNaN(numValue)) {
+      if (numValue < 100000000000) {
+        return new Date(numValue * 1000);
+      }
+      return new Date(numValue);
+    }
+    return new Date(timestamp);
+  }
+  
+  if (timestamp < 100000000000) {
+    return new Date(timestamp * 1000);
+  }
+  return new Date(timestamp);
+};
+
+const formatTime = (timestamp: number | string): string => {
+  const date = parseTimestamp(timestamp);
+  if (isNaN(date.getTime())) return '';
+  
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));

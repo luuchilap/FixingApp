@@ -80,8 +80,7 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
         };
         setImages([...images, imageAsset]);
       }
-    } catch (error) {
-      console.error('Error picking image:', error);
+    } catch {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
@@ -167,7 +166,6 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create job';
       Alert.alert('Lỗi', errorMessage);
-      console.error('Error creating job:', error);
     } finally {
       setLoading(false);
     }

@@ -23,10 +23,7 @@ api.interceptors.request.use(
       if (config.data instanceof FormData) {
         delete config.headers['Content-Type'];
       }
-    } catch (error) {
-      console.error('Error retrieving token from storage:', error);
-      // Continue with request even if token retrieval fails
-    }
+    } catch {}
     return config;
   },
   (error) => {
@@ -46,24 +43,8 @@ api.interceptors.response.use(
         // Clear stored authentication data
         await storage.removeItem(API_CONFIG.STORAGE_KEYS.AUTH_TOKEN);
         await storage.removeItem(API_CONFIG.STORAGE_KEYS.USER);
-        
-        // Note: Token refresh is not implemented as backend doesn't support it
-        // In a production app with refresh tokens, you would:
-        // 1. Attempt to refresh the token
-        // 2. Retry the original request with the new token
-        // 3. If refresh fails, redirect to login
-        
-        console.log('Authentication token expired or invalid. User will be redirected to login.');
-      } catch (storageError) {
-        console.error('Error clearing storage on 401:', storageError);
-      }
+      } catch {}
     }
-
-    // Handle network errors
-    if (!error.response) {
-      console.error('Network error:', error.message);
-    }
-
     return Promise.reject(error);
   }
 );

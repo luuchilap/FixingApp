@@ -23,6 +23,7 @@ import {
   ApplicationWithWorker,
   ApplicationWithJob,
 } from '../../services/applicationsApi';
+import { createConversation, getConversations } from '../../services/messagesApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ApplicationCard } from '../../components/applications/ApplicationCard';
@@ -56,8 +57,10 @@ const formatPrice = (price: number): string => {
   }).format(price);
 };
 
-const formatDate = (dateString: string): string => {
+const formatDate = (dateString: string | number | null | undefined): string => {
+  if (!dateString) return 'Chưa xác định';
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Chưa xác định';
   return date.toLocaleDateString('vi-VN', {
     year: 'numeric',
     month: 'long',
@@ -81,6 +84,38 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   // Track worker's application status for this job
   const [myApplication, setMyApplication] = useState<ApplicationWithJob | null>(null);
   const [checkingApplication, setCheckingApplication] = useState(false);
+  const [startingChat, setStartingChat] = useState(false);
+
+  // Get the accepted worker from applications
+  const acceptedApplication = applications.find(app => app.status === 'ACCEPTED');
+
+  const handleMessageWorker = async () => {
+    if (!job || !acceptedApplication?.workerId) return;
+
+    setStartingChat(true);
+    try {
+      // Check if conversation already exists
+      const conversations = await getConversations();
+      const existingConversation = conversations.find(
+        conv => conv.jobId === job.id && conv.workerId === acceptedApplication.workerId
+      );
+
+      if (existingConversation) {
+        navigation.navigate('Chat', { conversationId: existingConversation.id });
+      } else {
+        // Create new conversation
+        const newConversation = await createConversation({
+          jobId: job.id,
+          workerId: acceptedApplication.workerId,
+        });
+        navigation.navigate('Chat', { conversationId: newConversation.id });
+      }
+    } catch {
+      Alert.alert('Lỗi', 'Không thể mở cuộc hội thoại. Vui lòng thử lại.');
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   useEffect(() => {
     loadJob();
@@ -100,7 +135,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load job details';
       setError(errorMessage);
-      console.error('Error loading job:', err);
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -114,14 +148,11 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       setLoadingApplications(true);
       const apps = await getJobApplications(jobId);
       setApplications(apps);
-    } catch (err: unknown) {
-      console.error('Error loading applications:', err);
-    } finally {
+    } catch {} finally {
       setLoadingApplications(false);
     }
   };
 
-  // Check if current worker has already applied to this job
   const checkMyApplication = async () => {
     if (user?.role !== 'WORKER') return;
 
@@ -130,9 +161,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       const myApplications = await getMyApplications();
       const applicationForThisJob = myApplications.find(app => app.jobId === jobId);
       setMyApplication(applicationForThisJob || null);
-    } catch (err: unknown) {
-      console.error('Error checking application status:', err);
-    } finally {
+    } catch {} finally {
       setCheckingApplication(false);
     }
   };
@@ -408,6 +437,17 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
 
       {isEmployer && job.employerId === user?.id && (
         <View style={styles.actions}>
+          {job.status === 'DANG_BAN_GIAO' && acceptedApplication && (
+            <Button
+              title="💬 Nhắn tin cho ứng viên"
+              onPress={handleMessageWorker}
+              loading={startingChat}
+              fullWidth
+              size="lg"
+              variant="primary"
+              style={styles.messageButton}
+            />
+          )}
           <Text style={styles.employerNote}>
             Đây là công việc của bạn. Bạn có thể quản lý và xem danh sách ứng viên.
           </Text>
@@ -521,6 +561,9 @@ const styles = StyleSheet.create({
     color: colors.text.tertiary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  messageButton: {
+    marginBottom: spacing[3],
   },
   applicationsCard: {
     margin: spacing[4],

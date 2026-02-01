@@ -108,7 +108,6 @@ export const JobsListScreen: React.FC = () => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load jobs';
       setError(errorMessage);
-      console.error('Error loading jobs:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
