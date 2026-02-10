@@ -17,9 +17,8 @@ const getDevBaseUrl = () => {
 };
 
 export const API_CONFIG = {
-  BASE_URL: __DEV__
-    ? getDevBaseUrl()
-    : 'https://fixing-app.vercel.app/api',
+  // Dùng backend online cho cả dev & prod
+  BASE_URL: 'https://fixing-app.vercel.app/api',
   TIMEOUT: 10000,
   STORAGE_KEYS: {
     AUTH_TOKEN: 'authToken',
