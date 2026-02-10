@@ -61,7 +61,6 @@ app.use('/api/users', require('./modules/users/users.routes'));
 // System routes (must come before /api/jobs to avoid route conflicts)
 app.use('/api/system', require('./modules/system/system.routes'));
 app.use('/api/jobs', require('./modules/jobs/jobs.routes'));
-app.use('/api/jobs', require('./modules/applications/applications.routes'));
 app.use('/api/applications', require('./modules/applications/applications.routes'));
 app.use('/api/workers', require('./modules/workers/workers.routes'));
 app.use('/api/workers/certificates', require('./modules/certificates/certificates.routes'));
@@ -106,7 +105,7 @@ app.use((err, req, res, next) => {
 
   res.status(status).json({
     error: message,
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(process.env.NODE_ENV === 'development' && {
       stack: err.stack,
       details: err
     })

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { S3Image } from '../ui/S3Image';
 import { Card } from '../ui/Card';
 import { Job } from '../../types/jobs';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
@@ -48,7 +49,7 @@ const formatPrice = (price: number): string => {
 
 const parseTimestamp = (timestamp: string | number | null | undefined): Date | null => {
   if (!timestamp) return null;
-  
+
   let numValue: number;
   if (typeof timestamp === 'string') {
     numValue = Number(timestamp);
@@ -59,7 +60,7 @@ const parseTimestamp = (timestamp: string | number | null | undefined): Date | n
   } else {
     numValue = timestamp;
   }
-  
+
   // If timestamp is in seconds (less than year 2001 in ms), convert to ms
   if (numValue < 100000000000) {
     return new Date(numValue * 1000);
@@ -71,7 +72,7 @@ const formatDate = (dateString: string | number | null | undefined): string => {
   if (!dateString) return '';
   const date = parseTimestamp(dateString);
   if (!date || isNaN(date.getTime())) return '';
-  
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSeconds = Math.floor(diffMs / 1000);
@@ -87,7 +88,7 @@ const formatDate = (dateString: string | number | null | undefined): string => {
       year: 'numeric',
     });
   }
-  
+
   // Less than 1 day
   if (diffMinutes < 1) {
     return `${diffSeconds} giây trước`;
@@ -111,13 +112,12 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
     >
       <View style={styles.content}>
         {/* Image */}
-        {primaryImage ? (
-          <Image source={{ uri: primaryImage }} style={styles.image} />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Text style={styles.imagePlaceholderText}>📷</Text>
-          </View>
-        )}
+        <S3Image
+          uri={primaryImage}
+          style={styles.image}
+          fallbackEmoji="📷"
+          resizeMode="cover"
+        />
 
         {/* Job Info */}
         <View style={styles.info}>

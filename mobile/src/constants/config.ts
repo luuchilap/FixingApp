@@ -1,14 +1,14 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-const DEV_MACHINE_IP = '10.0.244.200';
+const DEV_MACHINE_IP = '192.168.1.7';
 
-const isDevice = Constants.executionEnvironment === 'storeClient' || 
-                 (Constants.executionEnvironment === 'standalone');
+const isDevice = Constants.executionEnvironment === 'storeClient' ||
+  (Constants.executionEnvironment === 'standalone');
 
 const getDevBaseUrl = () => {
   if (Platform.OS === 'android') {
-    return isDevice 
+    return isDevice
       ? `http://${DEV_MACHINE_IP}:3000/api`
       : 'http://10.0.2.2:3000/api';
   } else {
@@ -20,7 +20,7 @@ export const API_CONFIG = {
   BASE_URL: __DEV__
     ? getDevBaseUrl()
     : 'https://fixing-app.vercel.app/api',
-  TIMEOUT: 30000,
+  TIMEOUT: 10000,
   STORAGE_KEYS: {
     AUTH_TOKEN: 'authToken',
     USER: 'user',

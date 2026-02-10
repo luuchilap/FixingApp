@@ -13,7 +13,6 @@ const { runMigrations } = require('../../database/migrate');
 async function expireHandoverJobs(req, res, next) {
   try {
     const now = Date.now();
-    const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
 
     // Find jobs in DANG_BAN_GIAO status that are overdue
     const overdueJobsResult = await db.query(`

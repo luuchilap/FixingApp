@@ -8,8 +8,8 @@ const { Pool } = require('pg');
 // Parse connection string or use individual environment variables
 // Neon PostgreSQL connection string format:
 // postgresql://user:password@host/database?sslmode=require
-const connectionString = process.env.DATABASE_URL || 
-  (process.env.DB_HOST ? 
+const connectionString = process.env.DATABASE_URL ||
+  (process.env.DB_HOST ?
     `postgresql://${process.env.DB_USER || 'postgres'}:${process.env.DB_PASSWORD || ''}@${process.env.DB_HOST}/${process.env.DB_NAME || 'postgres'}${process.env.DB_SSL === 'true' ? '?sslmode=require' : ''}` :
     null
   );
@@ -23,7 +23,7 @@ const pool = new Pool({
   connectionString,
   // Connection pool settings
   max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+  idleTimeoutMillis: 3000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 10000, // Return an error after 10 seconds if connection cannot be established (increased for Neon serverless)
   ssl: process.env.DB_SSL === 'true' || process.env.DATABASE_URL?.includes('sslmode=require') ? {
     rejectUnauthorized: false // For Neon and other cloud providers
@@ -48,7 +48,7 @@ pool.on('error', (err) => {
 async function query(text, params, retries = 1) {
   const start = Date.now();
   let lastError;
-  
+
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await pool.query(text, params);
@@ -59,7 +59,7 @@ async function query(text, params, retries = 1) {
       return res;
     } catch (error) {
       lastError = error;
-      
+
       // Retry on connection timeout errors
       if (attempt < retries && (
         error.message?.includes('timeout') ||
@@ -71,12 +71,12 @@ async function query(text, params, retries = 1) {
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
-      
+
       console.error('Database query error', { text, error: error.message, code: error.code });
       throw error;
     }
   }
-  
+
   throw lastError;
 }
 
@@ -111,7 +111,7 @@ const db = {
   // Async query methods
   query,
   transaction,
-  
+
   // Helper methods that wrap pool methods
   async prepare(sql) {
     // Return a prepared statement-like object
@@ -133,10 +133,10 @@ const db = {
       }
     };
   },
-  
+
   // Direct exec for migrations
   exec,
-  
+
   // Get the pool for advanced usage
   pool
 };

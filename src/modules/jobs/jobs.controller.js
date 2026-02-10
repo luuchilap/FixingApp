@@ -7,59 +7,7 @@ const db = require('../../config/db');
 const { uploadToS3 } = require('./jobs.utils');
 const { geocode, calculateDistance } = require('../../utils/trackasia');
 const { sendNotification } = require('../notifications/notifications.controller');
-
-/**
- * Normalize skill value - maps skill values to standardized ones
- * If skill doesn't match any known skill, returns 'OTHER'
- */
-function normalizeSkill(skill) {
-  if (!skill) return null;
-  
-  const upperSkill = skill.toUpperCase().trim();
-  
-  // Valid skill values (must match frontend constants)
-  const validSkills = [
-    'PLUMBING',
-    'ELECTRICAL',
-    'CARPENTRY',
-    'PAINTING',
-    'CLEANING',
-    'AC_REPAIR',
-    'APPLIANCE_REPAIR',
-    'MASONRY',
-    'GARDENING',
-    'OTHER'
-  ];
-  
-  // Check if it's already a valid skill
-  if (validSkills.includes(upperSkill)) {
-    return upperSkill;
-  }
-  
-  // Map old/common variations to new standardized values
-  const skillMap = {
-    'PLUMBING': 'PLUMBING',
-    'ELECTRICAL': 'ELECTRICAL',
-    'CARPENTRY': 'CARPENTRY',
-    'PAINTING': 'PAINTING',
-    'CLEANING': 'CLEANING',
-    'AC REPAIR': 'AC_REPAIR',
-    'AC_REPAIR': 'AC_REPAIR',
-    'APPLIANCE REPAIR': 'APPLIANCE_REPAIR',
-    'APPLIANCE_REPAIR': 'APPLIANCE_REPAIR',
-    'MASONRY': 'MASONRY',
-    'GARDENING': 'GARDENING',
-    'OTHER': 'OTHER'
-  };
-  
-  // Check if it's a known variation
-  if (skillMap[upperSkill]) {
-    return skillMap[upperSkill];
-  }
-  
-  // If not found, return OTHER
-  return 'OTHER';
-}
+const { normalizeSkill } = require('../../utils/normalizeSkill');
 
 /**
  * Helper function to get job with images
@@ -72,7 +20,7 @@ async function getJobWithImages(jobId) {
     JOIN users u ON j.employer_id = u.id
     WHERE j.id = $1
   `, [jobId]);
-  
+
   if (jobResult.rows.length === 0) {
     return null;
   }
@@ -181,7 +129,7 @@ async function createJob(req, res, next) {
     }
 
     const now = Date.now();
-    
+
     // Normalize skill to ensure it matches one of the fixed skill values
     const normalizedSkill = normalizeSkill(requiredSkill);
 
@@ -233,7 +181,7 @@ async function createJob(req, res, next) {
 async function getJobById(req, res, next) {
   try {
     const { jobId } = req.params;
-    
+
     // Handle case where 'my' is treated as jobId (should be handled by /my route)
     if (jobId === 'my') {
       return res.status(404).json({
@@ -241,7 +189,7 @@ async function getJobById(req, res, next) {
         message: 'Job not found'
       });
     }
-    
+
     const job = await getJobWithImages(parseInt(jobId));
 
     if (!job) {
@@ -348,7 +296,7 @@ async function listJobs(req, res, next) {
             url: img.image_url
           })),
           // Calculate distance if user location provided
-          distance: (userLat && userLon && job.latitude != null && job.longitude != null) 
+          distance: (userLat && userLon && job.latitude != null && job.longitude != null)
             ? calculateDistance(userLat, userLon, parseFloat(job.latitude), parseFloat(job.longitude))
             : null
         };
@@ -412,15 +360,15 @@ async function getMyJobs(req, res, next) {
       SELECT * FROM jobs
       WHERE employer_id = $1
     `;
-    
+
     const params = [employerId];
-    
+
     // Add status filter if provided
     if (status && status !== '') {
       query += ` AND status = $2`;
       params.push(status);
     }
-    
+
     query += ` ORDER BY created_at DESC`;
 
     const jobsResult = await db.query(query, params);
@@ -516,7 +464,7 @@ async function updateJob(req, res, next) {
     if (address !== undefined) {
       updates.push(`address = $${paramIndex++}`);
       values.push(address);
-      
+
       // If address changed and no new lat/lng provided, geocode the new address
       if (address !== job.address && (!latitude || !longitude)) {
         try {
@@ -531,7 +479,7 @@ async function updateJob(req, res, next) {
         }
       }
     }
-    
+
     if (latitude !== undefined && longitude !== undefined) {
       updates.push(`latitude = $${paramIndex++}`);
       updates.push(`longitude = $${paramIndex++}`);
@@ -565,7 +513,7 @@ async function updateJob(req, res, next) {
 
         // Use new S3 URLs first
         let finalImages = s3ImageUrls;
-        
+
         // If no new files, use existing URLs if provided
         if (finalImages.length === 0 && images) {
           finalImages = Array.isArray(images) ? images : [images];

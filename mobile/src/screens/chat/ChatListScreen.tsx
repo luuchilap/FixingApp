@@ -49,7 +49,7 @@ export const ChatListScreen: React.FC = () => {
 
     const interval = setInterval(() => {
       loadConversations();
-    }, 30000); // Poll every 30 seconds
+    }, 10000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
   }, [user, loadConversations]);

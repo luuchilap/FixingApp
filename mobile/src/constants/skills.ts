@@ -9,6 +9,11 @@ export type SkillValue =
   | 'APPLIANCE_REPAIR'
   | 'MASONRY'
   | 'GARDENING'
+  | 'ENTERTAINMENT'
+  | 'HOUSEWORK'
+  | 'DELIVERY'
+  | 'ERRANDS'
+  | 'MISC_TASKS'
   | 'OTHER';
 
 export interface SkillOption {
@@ -26,6 +31,10 @@ export const SKILLS: SkillOption[] = [
   { value: 'APPLIANCE_REPAIR', label: 'Sửa thiết bị' },
   { value: 'MASONRY', label: 'Thợ xây' },
   { value: 'GARDENING', label: 'Làm vườn' },
+  { value: 'ENTERTAINMENT', label: 'Giải trí' },
+  { value: 'HOUSEWORK', label: 'Việc nhà' },
+  { value: 'DELIVERY', label: 'Giao hàng' },
+  { value: 'ERRANDS', label: 'Việc vặt' },
+  { value: 'MISC_TASKS', label: 'Việc nhảm nhí' },
   { value: 'OTHER', label: 'Khác' },
 ];
-

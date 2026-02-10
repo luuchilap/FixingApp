@@ -173,9 +173,9 @@ async function getUserIdByPhone(phone) {
  */
 function normalizeSkill(skill) {
   if (!skill) return null;
-  
+
   const upperSkill = skill.toUpperCase().trim();
-  
+
   // Map old values to new standardized values
   const skillMap = {
     'PLUMBING': 'PLUMBING',
@@ -189,14 +189,19 @@ function normalizeSkill(skill) {
     'APPLIANCE_REPAIR': 'APPLIANCE_REPAIR',
     'MASONRY': 'MASONRY',
     'GARDENING': 'GARDENING',
+    'ENTERTAINMENT': 'ENTERTAINMENT',
+    'HOUSEWORK': 'HOUSEWORK',
+    'DELIVERY': 'DELIVERY',
+    'ERRANDS': 'ERRANDS',
+    'MISC_TASKS': 'MISC_TASKS',
     'OTHER': 'OTHER'
   };
-  
+
   // Check if it's a known skill
   if (skillMap[upperSkill]) {
     return skillMap[upperSkill];
   }
-  
+
   // If not found, return OTHER
   return 'OTHER';
 }
@@ -206,7 +211,7 @@ function normalizeSkill(skill) {
  */
 async function createUser(userData) {
   const { phone, password, fullName, address, role, skill } = userData;
-  
+
   // Check if user already exists
   const existingUserId = await getUserIdByPhone(phone);
   if (existingUserId) {
@@ -246,7 +251,7 @@ async function createUser(userData) {
  */
 async function createJob(jobData) {
   const { employerPhone, title, description, price, address, requiredSkill, status } = jobData;
-  
+
   const employerId = await getUserIdByPhone(employerPhone);
   if (!employerId) {
     console.log(`  ⚠ Employer ${employerPhone} not found, skipping job: ${title}`);
@@ -258,7 +263,7 @@ async function createJob(jobData) {
 
   // Normalize skill to ensure it matches one of the fixed skill values
   const normalizedSkill = normalizeSkill(requiredSkill);
-  
+
   const result = await db.query(`
     INSERT INTO jobs (
       employer_id, title, description, price, address, required_skill,
@@ -288,7 +293,7 @@ async function createJob(jobData) {
  */
 async function createCertificate(certData) {
   const { workerPhone, imageUrl, status } = certData;
-  
+
   const workerId = await getUserIdByPhone(workerPhone);
   if (!workerId) {
     console.log(`  ⚠ Worker ${workerPhone} not found, skipping certificate`);

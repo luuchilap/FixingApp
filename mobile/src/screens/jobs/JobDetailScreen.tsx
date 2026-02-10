@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Image,
+
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,10 +24,9 @@ import {
   ApplicationWithJob,
 } from '../../services/applicationsApi';
 import { createConversation, getConversations } from '../../services/messagesApi';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ApplicationCard } from '../../components/applications/ApplicationCard';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
+import { S3Image } from '../../components/ui/S3Image';
 import { SKILLS } from '../../constants/skills';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -59,7 +58,7 @@ const formatPrice = (price: number): string => {
 
 const parseTimestamp = (timestamp: string | number | null | undefined): Date | null => {
   if (!timestamp) return null;
-  
+
   let numValue: number;
   if (typeof timestamp === 'string') {
     // Try to parse as number first
@@ -72,7 +71,7 @@ const parseTimestamp = (timestamp: string | number | null | undefined): Date | n
   } else {
     numValue = timestamp;
   }
-  
+
   // If timestamp is in seconds (less than year 2001 in ms), convert to ms
   if (numValue < 100000000000) {
     return new Date(numValue * 1000);
@@ -103,7 +102,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const [applications, setApplications] = useState<ApplicationWithWorker[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
-  
+
   // Track worker's application status for this job
   const [myApplication, setMyApplication] = useState<ApplicationWithJob | null>(null);
   const [checkingApplication, setCheckingApplication] = useState(false);
@@ -171,7 +170,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       setLoadingApplications(true);
       const apps = await getJobApplications(jobId);
       setApplications(apps);
-    } catch {} finally {
+    } catch { } finally {
       setLoadingApplications(false);
     }
   };
@@ -181,10 +180,10 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
 
     try {
       setCheckingApplication(true);
-      const myApplications = await getMyApplications();
-      const applicationForThisJob = myApplications.find(app => app.jobId === jobId);
+      const response = await getMyApplications();
+      const applicationForThisJob = response.data.find((app: ApplicationWithJob) => app.jobId === jobId);
       setMyApplication(applicationForThisJob || null);
-    } catch {} finally {
+    } catch { } finally {
       setCheckingApplication(false);
     }
   };
@@ -314,7 +313,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const isWorker = user?.role === 'WORKER';
   const hasApplied = myApplication !== null;
   const canApply = isWorker && job.status === 'CHUA_LAM' && !job.acceptedWorkerId && !hasApplied;
-  
+
   const getApplicationStatusLabel = (status: string): string => {
     const statusMap: Record<string, string> = {
       'APPLIED': 'Đã ứng tuyển',
@@ -340,10 +339,11 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       {/* Images */}
       {job.images && job.images.length > 0 && (
         <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: job.images[0].url }}
+          <S3Image
+            uri={job.images[0].url}
             style={styles.heroImage}
             resizeMode="cover"
+            fallbackEmoji="🏠"
           />
         </View>
       )}
