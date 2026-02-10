@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { MainTabs, MainTabsParamList } from './MainTabs';
+import { SkillValue } from '../constants/skills';
 import { JobDetailScreen } from '../screens/jobs/JobDetailScreen';
 import { CreateJobScreen } from '../screens/jobs/CreateJobScreen';
 import { ChatListScreen } from '../screens/chat/ChatListScreen';
@@ -10,7 +11,7 @@ import { ChatScreen } from '../screens/chat/ChatScreen';
 export type MainStackParamList = {
   MainTabs: undefined;
   JobDetail: { jobId: number };
-  CreateJob: undefined;
+  CreateJob: { skill?: SkillValue; address?: string } | undefined;
   ChatList: undefined;
   Chat: { conversationId: number };
 };

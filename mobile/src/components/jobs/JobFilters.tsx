@@ -37,6 +37,7 @@ export interface JobFilters {
   latitude?: number;
   longitude?: number;
   maxDistance?: number;
+  address?: string;
 }
 
 interface JobFiltersProps {
@@ -57,7 +58,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
   const [minPrice, setMinPrice] = React.useState(filters.minPrice?.toString() || '');
   const [maxPrice, setMaxPrice] = React.useState(filters.maxPrice?.toString() || '');
   const [useLocation, setUseLocation] = React.useState(false);
-  const [locationAddress, setLocationAddress] = React.useState('');
+  const [locationAddress, setLocationAddress] = React.useState(filters.address || '');
   const [locationLat, setLocationLat] = React.useState<number | undefined>(filters.latitude);
   const [locationLon, setLocationLon] = React.useState<number | undefined>(filters.longitude);
   const [distance, setDistance] = React.useState<DistanceOption>(
@@ -66,6 +67,32 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
   const [locationError, setLocationError] = React.useState<string | null>(null);
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
+
+  // Sync internal state when filters prop changes (e.g. preset filters from Trang chủ)
+  React.useEffect(() => {
+    setKeyword(filters.keyword || '');
+    setCategory((filters.category as SkillValue | '') || '');
+    setMinPrice(filters.minPrice != null ? filters.minPrice.toString() : '');
+    setMaxPrice(filters.maxPrice != null ? filters.maxPrice.toString() : '');
+    setLocationLat(filters.latitude);
+    setLocationLon(filters.longitude);
+    setDistance(
+      filters.maxDistance ? (filters.maxDistance.toString() as DistanceOption) : ''
+    );
+    setLocationAddress(filters.address || '');
+
+    const hasPresetFilters =
+      !!(filters.keyword ||
+        filters.category ||
+        filters.minPrice != null ||
+        filters.maxPrice != null ||
+        (filters.latitude && filters.longitude && filters.maxDistance));
+
+    if (hasPresetFilters) {
+      setUseLocation(!!(filters.latitude && filters.longitude && filters.maxDistance));
+      setExpanded(true);
+    }
+  }, [filters]);
 
   // Get user's current location
   const handleGetLocation = async () => {
@@ -163,6 +190,9 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
       newFilters.latitude = locationLat;
       newFilters.longitude = locationLon;
       newFilters.maxDistance = parseFloat(distance);
+      if (locationAddress.trim()) {
+        newFilters.address = locationAddress.trim();
+      }
     }
 
     onFilterChange(newFilters);

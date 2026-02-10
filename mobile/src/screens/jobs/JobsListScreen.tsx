@@ -9,7 +9,7 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { JobCard } from '../../components/jobs/JobCard';
@@ -18,22 +18,33 @@ import { Job } from '../../types/jobs';
 import { listJobs, getMyJobs } from '../../services/jobsApi';
 import { colors, spacing, typography } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
+import { MainTabsParamList } from '../../navigation/MainTabs';
 import { calculateDistance } from '../../utils/distance';
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
+type JobsRouteProp = RouteProp<MainTabsParamList, 'Jobs'>;
 
 export const JobsListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<JobsRouteProp>();
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<JobFiltersType>({});
+  const [filters, setFilters] = useState<JobFiltersType>(route.params?.presetFilters || {});
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Update filters when navigation params change (e.g. click icon từ Trang chủ nhiều lần)
+  useEffect(() => {
+    if (route.params?.presetFilters) {
+      setFilters(route.params.presetFilters);
+      setCurrentPage(1);
+    }
+  }, [route.params]);
 
   const loadJobs = useCallback(async (page = 1, append = false) => {
     try {

@@ -8,10 +8,11 @@ import { NotificationsScreen } from '../screens/notifications/NotificationsScree
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { colors, spacing, typography } from '../constants/designTokens';
+import { JobFilters as JobFiltersType } from '../components/jobs/JobFilters';
 
 export type MainTabsParamList = {
   Dashboard: undefined;
-  Jobs: undefined;
+  Jobs: { presetFilters?: JobFiltersType } | undefined;
   Profile: undefined;
   Notifications: undefined;
 };

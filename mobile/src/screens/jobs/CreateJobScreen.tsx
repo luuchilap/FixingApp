@@ -28,15 +28,15 @@ interface ImageAsset {
   name: string;
 }
 
-export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation }) => {
+export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState(route.params?.address || '');
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
-  const [requiredSkill, setRequiredSkill] = useState<SkillValue | ''>('');
+  const [requiredSkill, setRequiredSkill] = useState<SkillValue | ''>(route.params?.skill || '');
   const [images, setImages] = useState<ImageAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
