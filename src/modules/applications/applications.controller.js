@@ -70,13 +70,15 @@ async function applyToJob(req, res, next) {
       // Send notification to employer
       await sendNotification(
         job.employer_id,
-        `${workerName} vừa ứng tuyển công việc "${job.title}"`
+        `${workerName} vừa ứng tuyển công việc "${job.title}"`,
+        { type: 'JOB_APPLIED', jobId: job.id }
       );
 
       // Send notification to worker (confirmation)
       await sendNotification(
         workerId,
-        `Bạn đã ứng tuyển công việc "${job.title}"`
+        `Bạn đã ứng tuyển công việc "${job.title}"`,
+        { type: 'JOB_APPLIED', jobId: job.id }
       );
 
       res.status(201).json({
@@ -262,13 +264,15 @@ async function acceptWorker(req, res, next) {
     // Send notification to worker
     await sendNotification(
       parseInt(workerId),
-      `Bạn đã được chấp nhận cho công việc "${job.title}"`
+      `Bạn đã được chấp nhận cho công việc "${job.title}"`,
+      { type: 'JOB_ACCEPTED', jobId: job.id }
     );
 
     // Send notification to employer (confirmation)
     await sendNotification(
       employerId,
-      `Bạn đã chấp nhận ${workerName} cho công việc "${job.title}"`
+      `Bạn đã chấp nhận ${workerName} cho công việc "${job.title}"`,
+      { type: 'JOB_ACCEPTED', jobId: job.id }
     );
 
     // Get updated job
@@ -344,13 +348,15 @@ async function rejectWorker(req, res, next) {
     // Send notification to worker
     await sendNotification(
       parseInt(workerId),
-      `Bạn đã bị từ chối cho công việc "${job.title}"`
+      `Bạn đã bị từ chối cho công việc "${job.title}"`,
+      { type: 'JOB_REJECTED', jobId: job.id }
     );
 
     // Send notification to employer (confirmation)
     await sendNotification(
       employerId,
-      `Bạn đã từ chối ${workerName} cho công việc "${job.title}"`
+      `Bạn đã từ chối ${workerName} cho công việc "${job.title}"`,
+      { type: 'JOB_REJECTED', jobId: job.id }
     );
 
     res.status(200).json({

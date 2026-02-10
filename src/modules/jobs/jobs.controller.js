@@ -10,6 +10,68 @@ const { sendNotification } = require('../notifications/notifications.controller'
 const { normalizeSkill } = require('../../utils/normalizeSkill');
 
 /**
+ * Notify nearby workers when a new job is created.
+ * Default radius: 5km
+ */
+async function notifyNearbyWorkersForJob(job, radiusKm = 5) {
+  try {
+    const jobLat = job.latitude != null ? parseFloat(job.latitude) : null;
+    const jobLon = job.longitude != null ? parseFloat(job.longitude) : null;
+
+    if (!jobLat || !jobLon || !isFinite(jobLat) || !isFinite(jobLon)) {
+      return;
+    }
+
+    // Find workers with an address
+    const workersResult = await db.query(
+      `
+      SELECT u.id, u.address
+      FROM users u
+      JOIN user_roles ur ON u.id = ur.user_id
+      JOIN roles r ON ur.role_id = r.id
+      WHERE r.name = 'WORKER'
+        AND u.address IS NOT NULL
+        AND TRIM(u.address) <> ''
+    `
+    );
+
+    for (const worker of workersResult.rows) {
+      try {
+        const geocodeResult = await geocode(worker.address);
+        const workerLat = geocodeResult.latitude;
+        const workerLon = geocodeResult.longitude;
+
+        if (
+          workerLat == null ||
+          workerLon == null ||
+          !isFinite(workerLat) ||
+          !isFinite(workerLon)
+        ) {
+          continue;
+        }
+
+        const distance = calculateDistance(jobLat, jobLon, workerLat, workerLon);
+        if (distance <= radiusKm) {
+          await sendNotification(
+            worker.id,
+            'Job mới được đăng gần bạn',
+            { type: 'JOB_NEARBY', jobId: job.id }
+          );
+        }
+      } catch (geocodeError) {
+        // If geocoding worker address fails, skip this worker
+        console.warn(
+          'Failed to geocode worker address for nearby job notification:',
+          geocodeError.message
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error notifying nearby workers for job:', error);
+  }
+}
+
+/**
  * Helper function to get job with images
  * Returns images in format expected by frontend: Array<{ type?: string; url: string }>
  */
@@ -165,8 +227,14 @@ async function createJob(req, res, next) {
     // Send notification to employer (confirmation)
     await sendNotification(
       employerId,
-      `Bạn đã đăng công việc "${title}"`
+      `Bạn đã đăng công việc "${title}"`,
+      { type: 'JOB_POSTED', jobId }
     );
+
+    // Notify nearby workers about the new job (within 5km)
+    if (job) {
+      await notifyNearbyWorkersForJob(job, 5);
+    }
 
     res.status(201).json(job);
   } catch (error) {

@@ -1,6 +1,7 @@
 {
   "name": "fixing-app-backend",
   "version": "1.0.0",
+  
   "description": "Backend MVP for connecting employers with workers",
   "main": "src/server.js",
   "scripts": {

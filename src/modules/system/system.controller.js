@@ -53,13 +53,15 @@ async function expireHandoverJobs(req, res, next) {
         if (job.employer_id) {
           await sendNotification(
             job.employer_id,
-            `Job "${job.title}" has been reset to "Chưa làm" due to overdue handover deadline.`
+            `Job "${job.title}" has been reset to "Chưa làm" due to overdue handover deadline.`,
+            { type: 'JOB_RESET', jobId: job.id }
           );
         }
         if (job.accepted_worker_id) {
           await sendNotification(
             job.accepted_worker_id,
-            `Job "${job.title}" has been reset to "Chưa làm" due to overdue handover deadline.`
+            `Job "${job.title}" has been reset to "Chưa làm" due to overdue handover deadline.`,
+            { type: 'JOB_RESET', jobId: job.id }
           );
         }
       });

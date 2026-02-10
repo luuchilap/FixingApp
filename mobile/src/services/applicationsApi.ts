@@ -69,7 +69,8 @@ export interface PaginatedApplications {
  * Apply to a job (Worker only)
  */
 export const applyToJob = async (jobId: number): Promise<Application> => {
-  const response = await api.post<Application>(`/jobs/${jobId}/apply`);
+  // Backend routes for applications are mounted under /api/applications
+  const response = await api.post<Application>(`/applications/${jobId}/apply`);
   return response.data;
 };
 
@@ -77,7 +78,7 @@ export const applyToJob = async (jobId: number): Promise<Application> => {
  * Get applications for a specific job (Employer only)
  */
 export const getJobApplications = async (jobId: number): Promise<ApplicationWithWorker[]> => {
-  const response = await api.get<ApplicationWithWorker[]>(`/jobs/${jobId}/applications`);
+  const response = await api.get<ApplicationWithWorker[]>(`/applications/${jobId}/applications`);
   return response.data;
 };
 
@@ -97,13 +98,13 @@ export const getMyApplications = async (params?: { page?: number; limit?: number
  * Accept a worker application (Employer only)
  */
 export const acceptApplication = async (jobId: number, workerId: number): Promise<void> => {
-  await api.post(`/jobs/${jobId}/accept/${workerId}`);
+  await api.post(`/applications/${jobId}/accept/${workerId}`);
 };
 
 /**
  * Reject a worker application (Employer only)
  */
 export const rejectApplication = async (jobId: number, workerId: number): Promise<void> => {
-  await api.post(`/jobs/${jobId}/reject/${workerId}`);
+  await api.post(`/applications/${jobId}/reject/${workerId}`);
 };
 

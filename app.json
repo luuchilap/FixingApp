@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "55e415fc-fe7d-4825-8deb-02f21b345c7c"
+      }
+    },
+    "android": {
+      "package": "com.luuchilap1604.fixingappbackend"
+    }
+  }
+}

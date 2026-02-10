@@ -4,6 +4,8 @@ export interface Notification {
   id: number;
   userId: number;
   content: string;
+  type?: string | null;
+  jobId?: number | null;
   isRead: boolean;
   createdAt: number;
 }

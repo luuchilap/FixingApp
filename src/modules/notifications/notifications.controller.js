@@ -41,6 +41,8 @@ async function getNotifications(req, res, next) {
       id: notif.id,
       userId: notif.user_id,
       content: notif.content,
+      type: notif.type || null,
+      jobId: notif.job_id || null,
       isRead: notif.is_read === true,
       createdAt: typeof notif.created_at === 'string' ? parseInt(notif.created_at, 10) : notif.created_at
     }));
@@ -99,12 +101,17 @@ async function markAsRead(req, res, next) {
 /**
  * Helper function to send notification to a user
  */
-async function sendNotification(userId, content) {
+async function sendNotification(userId, content, metadata = {}) {
   const now = Date.now();
-  await db.query(`
-    INSERT INTO notifications (user_id, content, is_read, created_at)
-    VALUES ($1, $2, FALSE, $3)
-  `, [userId, content, now]);
+  const { type = null, jobId = null } = metadata || {};
+
+  await db.query(
+    `
+    INSERT INTO notifications (user_id, content, type, job_id, is_read, created_at)
+    VALUES ($1, $2, $3, $4, FALSE, $5)
+  `,
+    [userId, content, type, jobId, now]
+  );
 }
 
 module.exports = {

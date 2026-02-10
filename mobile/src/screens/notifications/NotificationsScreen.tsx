@@ -96,7 +96,17 @@ export const NotificationsScreen: React.FC = () => {
     if (!notification.isRead) {
       handleMarkAsRead(notification);
     }
-    // Could navigate to relevant screen based on notification content
+
+    // Navigate to job details for job-related notifications
+    if (
+      notification.type &&
+      notification.jobId &&
+      ['JOB_NEARBY', 'JOB_POSTED', 'JOB_APPLIED', 'JOB_ACCEPTED', 'JOB_REJECTED', 'JOB_RESET'].includes(
+        notification.type
+      )
+    ) {
+      navigation.navigate('JobDetail', { jobId: notification.jobId });
+    }
   };
 
   const handleMarkAsRead = async (notification: Notification) => {
