@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ const formatTime = (timestamp: number | string): string => {
 
 const formatDate = (timestamp: number | string): string => {
   const date = parseTimestamp(timestamp);
-  if (isNaN(date.getTime())) return '';
+  if (!date || isNaN(date.getTime())) return '';
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
@@ -96,7 +96,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       if (loadOlder && messages.length > 0) {
         // Load older messages (pagination)
         const oldestMessage = messages[0];
-        before = oldestMessage.createdAt;
+        before = typeof oldestMessage.createdAt === 'number' ? oldestMessage.createdAt : parseInt(oldestMessage.createdAt);
       }
 
       const response = await getMessages(conversationId, 50, before);

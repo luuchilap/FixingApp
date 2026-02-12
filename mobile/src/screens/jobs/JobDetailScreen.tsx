@@ -259,8 +259,8 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     );
   };
 
-  const handleAccept = async (application: ApplicationWithWorker) => {
-    if (!job) return;
+  const handleAccept = async (application: ApplicationWithWorker | ApplicationWithJob) => {
+    if (!job || !application.worker) return;
 
     Alert.alert(
       'Chấp nhận ứng viên',
@@ -286,8 +286,8 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     );
   };
 
-  const handleReject = async (application: ApplicationWithWorker) => {
-    if (!job) return;
+  const handleReject = async (application: ApplicationWithWorker | ApplicationWithJob) => {
+    if (!job || !application.worker) return;
 
     Alert.alert(
       'Từ chối ứng viên',

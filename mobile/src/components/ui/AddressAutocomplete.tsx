@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
   Keyboard,
   ScrollView,

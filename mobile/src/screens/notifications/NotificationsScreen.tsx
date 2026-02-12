@@ -11,7 +11,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../hooks/useAuth';
 import { NotificationCard } from '../../components/notifications/NotificationCard';
 import {
   getNotifications,
@@ -19,7 +18,7 @@ import {
   markAllNotificationsAsRead,
   Notification,
 } from '../../services/notificationsApi';
-import { getConversations, Conversation } from '../../services/messagesApi';
+import { getConversations } from '../../services/messagesApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -27,7 +26,6 @@ type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,11 +58,13 @@ export const NotificationsScreen: React.FC = () => {
       // Get the most recent message preview
       if (conversations.length > 0 && conversations[0]?.lastMessage?.content) {
         const recentConv = conversations[0];
-        setLastMessage(recentConv.lastMessage.content);
-        const senderName = recentConv.lastMessage.senderId === recentConv.employerId
-          ? recentConv.employerName
-          : recentConv.workerName;
-        setLastMessageSender(senderName || null);
+        if (recentConv.lastMessage) {
+          setLastMessage(recentConv.lastMessage.content);
+          const senderName = recentConv.lastMessage.senderId === recentConv.employerId
+            ? recentConv.employerName
+            : recentConv.workerName;
+          setLastMessageSender(senderName || null);
+        }
       } else {
         setLastMessage(null);
         setLastMessageSender(null);

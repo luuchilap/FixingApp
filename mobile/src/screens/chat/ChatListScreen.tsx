@@ -23,16 +23,13 @@ export const ChatListScreen: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     try {
-      setError(null);
       const data = await getConversations();
       setConversations(data);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách hội thoại';
-      setError(errorMessage);
+    } catch {
+      // Silent fail — pull-to-refresh available
     } finally {
       setLoading(false);
       setRefreshing(false);

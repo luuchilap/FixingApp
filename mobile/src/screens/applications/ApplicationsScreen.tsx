@@ -14,7 +14,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { ApplicationCard } from '../../components/applications/ApplicationCard';
 import {
   getMyApplications,
-  getJobApplications,
   ApplicationWithJob,
   ApplicationWithWorker,
 } from '../../services/applicationsApi';
@@ -40,7 +39,8 @@ export const ApplicationsScreen: React.FC = () => {
 
       if (user?.role === 'WORKER') {
         // Workers see their own applications
-        apps = await getMyApplications();
+        const result = await getMyApplications();
+        apps = result.data;
       } else {
         // For employers, we'd need a jobId - this screen shows all applications
         // For now, show empty or redirect to job detail
