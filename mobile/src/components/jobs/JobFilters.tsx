@@ -66,6 +66,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
   );
   const [locationError, setLocationError] = React.useState<string | null>(null);
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
+  const [isApplying, setIsApplying] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
 
   // Sync internal state when filters prop changes (e.g. preset filters from Trang chủ)
@@ -81,15 +82,17 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     );
     setLocationAddress(filters.address || '');
 
+    const hasPresetLocation = !!(filters.latitude && filters.longitude && filters.maxDistance);
+    setUseLocation(hasPresetLocation);
+
     const hasPresetFilters =
       !!(filters.keyword ||
         filters.category ||
         filters.minPrice != null ||
         filters.maxPrice != null ||
-        (filters.latitude && filters.longitude && filters.maxDistance));
+        hasPresetLocation);
 
     if (hasPresetFilters) {
-      setUseLocation(!!(filters.latitude && filters.longitude && filters.maxDistance));
       setExpanded(true);
     }
   }, [filters]);
@@ -160,7 +163,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     }
   };
 
-  const handleApply = () => {
+  const handleApply = async (): Promise<boolean> => {
     const newFilters: JobFilters = {};
     
     if (keyword.trim()) {
@@ -186,9 +189,31 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     }
 
     // Location-based filtering
-    if (useLocation && locationLat && locationLon && distance) {
-      newFilters.latitude = locationLat;
-      newFilters.longitude = locationLon;
+    let lat = locationLat;
+    let lon = locationLon;
+
+    // If address entered with distance but no coordinates, try geocoding
+    if (locationAddress.trim() && distance && (!lat || !lon)) {
+      setIsApplying(true);
+      try {
+        const geocodeResult = await geocode(locationAddress.trim());
+        lat = geocodeResult.latitude;
+        lon = geocodeResult.longitude;
+        setLocationLat(lat);
+        setLocationLon(lon);
+        setUseLocation(true);
+        setLocationError(null);
+      } catch {
+        setLocationError('Không thể xác định tọa độ từ địa chỉ. Vui lòng chọn từ gợi ý hoặc dùng nút vị trí.');
+        setIsApplying(false);
+        return false;
+      }
+      setIsApplying(false);
+    }
+
+    if (lat && lon && distance) {
+      newFilters.latitude = lat;
+      newFilters.longitude = lon;
       newFilters.maxDistance = parseFloat(distance);
       if (locationAddress.trim()) {
         newFilters.address = locationAddress.trim();
@@ -196,15 +221,13 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     }
 
     onFilterChange(newFilters);
+    return true;
   };
 
-  // Reset location when distance is cleared
+  // Reset useLocation flag when distance is cleared (keep address for UX)
   React.useEffect(() => {
     if (!distance) {
       setUseLocation(false);
-      setLocationAddress('');
-      setLocationLat(undefined);
-      setLocationLon(undefined);
     }
   }, [distance]);
 
@@ -213,7 +236,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
     category || 
     minPrice.trim() || 
     maxPrice.trim() || 
-    (useLocation && locationLat && locationLon && distance);
+    (locationLat && locationLon && distance);
 
   // Enable LayoutAnimation on Android (run once)
   React.useEffect(() => {
@@ -336,9 +359,9 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
                   value={locationAddress}
                   onChange={(addr, lat, lng) => {
                     setLocationAddress(addr);
-                    setLocationLat(lat);
-                    setLocationLon(lng);
-                    if (lat && lng) {
+                    if (lat !== undefined && lng !== undefined) {
+                      setLocationLat(lat);
+                      setLocationLon(lng);
                       setUseLocation(true);
                       setLocationError(null);
                     }
@@ -347,7 +370,7 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
                 />
               </View>
 
-              {(useLocation && (locationLat || locationAddress)) && (
+              {(locationAddress.trim().length > 0 || (useLocation && locationLat)) && (
                 <View style={styles.distanceContainer}>
                   <Select
                     label="Khoảng cách:"
@@ -367,13 +390,17 @@ export const JobFilters: React.FC<JobFiltersProps> = ({
 
             <Button
               variant="primary"
-              onPress={() => {
-                handleApply();
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setExpanded(false);
+              onPress={async () => {
+                const success = await handleApply();
+                if (success) {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setExpanded(false);
+                }
               }}
               style={styles.applyButton}
               fullWidth
+              loading={isApplying}
+              disabled={isApplying}
             >
               Lọc kết quả
             </Button>
@@ -449,6 +476,8 @@ const styles = StyleSheet.create({
     padding: spacing[3],
     borderWidth: 1,
     borderColor: colors.border.light,
+    zIndex: 5,
+    overflow: 'visible' as const,
   },
   locationHeader: {
     flexDirection: 'row',
@@ -497,6 +526,8 @@ const styles = StyleSheet.create({
   },
   addressInputContainer: {
     marginBottom: spacing[2],
+    zIndex: 10,
+    overflow: 'visible' as const,
   },
   distanceContainer: {
     marginTop: spacing[2],

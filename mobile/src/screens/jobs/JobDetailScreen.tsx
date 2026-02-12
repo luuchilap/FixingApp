@@ -508,16 +508,15 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     }
     if (isEmployer) {
       if (isAccepted) return '🗺️ Theo dõi vị trí (cập nhật mỗi 5 phút)';
-      if (workerLocationForEmployer) return '🗺️ Vị trí thợ ứng tuyển';
+      if (applications.length > 0) return '🗺️ Bản đồ vị trí';
       return '';
     }
     return '';
-  }, [isWorker, isEmployer, isAccepted, workerLocationForEmployer]);
+  }, [isWorker, isEmployer, isAccepted, applications.length]);
 
   const showWorkerMap = isWorker && hasJobLocation;
-  const showEmployerMap = isEmployer && !!job && job.employerId === user?.id && (
-    isAccepted || (workerLocationForEmployer?.latitude != null)
-  );
+  const showEmployerMap = isEmployer && !!job && job.employerId === user?.id && 
+    hasJobLocation && applications.length > 0;
 
   if (loading) {
     return (

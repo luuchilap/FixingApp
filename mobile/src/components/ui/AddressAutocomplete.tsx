@@ -104,27 +104,31 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     // Update input value immediately
     setInputValue(address);
     
-    // Update parent component with address immediately
-    onChange(address);
-    
-    // Get coordinates in background
+    // Get coordinates then notify parent with full data
     try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+
       if (suggestion.placeId) {
         try {
           const placeDetails = await getPlaceDetails(suggestion.placeId);
-          onChange(address, placeDetails.latitude, placeDetails.longitude);
+          lat = placeDetails.latitude;
+          lng = placeDetails.longitude;
         } catch {
-          try {
-            const geocodeResult = await geocode(address);
-            onChange(address, geocodeResult.latitude, geocodeResult.longitude);
-          } catch {}
+          const geocodeResult = await geocode(address);
+          lat = geocodeResult.latitude;
+          lng = geocodeResult.longitude;
         }
       } else {
-        try {
-          const geocodeResult = await geocode(address);
-          onChange(address, geocodeResult.latitude, geocodeResult.longitude);
-        } catch {}
+        const geocodeResult = await geocode(address);
+        lat = geocodeResult.latitude;
+        lng = geocodeResult.longitude;
       }
+
+      onChange(address, lat, lng);
+    } catch {
+      // Geocoding failed - still update address so user sees their selection
+      onChange(address);
     } finally {
       // Reset flag after a longer delay to ensure state is stable
       setTimeout(() => {
@@ -216,7 +220,8 @@ export const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: spacing[4],
-    zIndex: 1,
+    zIndex: 100,
+    position: 'relative' as const,
   },
   label: {
     fontSize: typography.fontSize.sm,
