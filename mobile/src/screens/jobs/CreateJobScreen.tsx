@@ -7,16 +7,19 @@ import {
   Alert,
   Image,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
 import { Select } from '../../components/ui/Select';
 import { createJob } from '../../services/jobsApi';
-import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
+import { colors, spacing, typography, borderRadius, shadows } from '../../constants/designTokens';
 import { SKILLS, SkillValue } from '../../constants/skills';
 import { MainStackParamList } from '../../navigation/MainStack';
 
@@ -27,6 +30,8 @@ interface ImageAsset {
   type: string;
   name: string;
 }
+
+type ScheduleMode = 'NOW' | 'SCHEDULED';
 
 export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -40,6 +45,18 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, ro
   const [images, setImages] = useState<ImageAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Schedule state
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('NOW');
+  const [scheduledDate, setScheduledDate] = useState<Date>(
+    () => {
+      const d = new Date();
+      d.setHours(d.getHours() + 1, 0, 0, 0); // Default: 1 hour from now, rounded
+      return d;
+    }
+  );
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   // Request image picker permissions
   const requestImagePickerPermission = async () => {
@@ -89,6 +106,38 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, ro
     setImages(images.filter((_, i) => i !== index));
   };
 
+  // Date/time picker handlers
+  const onDateChange = (_event: DateTimePickerEvent, selected?: Date) => {
+    setShowDatePicker(false);
+    if (selected) {
+      const updated = new Date(scheduledDate);
+      updated.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      setScheduledDate(updated);
+    }
+  };
+
+  const onTimeChange = (_event: DateTimePickerEvent, selected?: Date) => {
+    setShowTimePicker(false);
+    if (selected) {
+      const updated = new Date(scheduledDate);
+      updated.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+      setScheduledDate(updated);
+    }
+  };
+
+  const formatDate = (date: Date): string => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatTime = (date: Date): string => {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -117,6 +166,11 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, ro
       newErrors.requiredSkill = 'Kỹ năng yêu cầu là bắt buộc';
     }
 
+    // Validate scheduled time is in the future
+    if (scheduleMode === 'SCHEDULED' && scheduledDate.getTime() <= Date.now()) {
+      newErrors.schedule = 'Thời gian hẹn phải ở tương lai';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -137,7 +191,12 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, ro
       formData.append('price', parseFloat(price).toString());
       formData.append('address', address.trim());
       formData.append('requiredSkill', requiredSkill as string);
-      
+
+      // Add scheduled time
+      if (scheduleMode === 'SCHEDULED') {
+        formData.append('scheduledAt', scheduledDate.getTime().toString());
+      }
+
       // Add coordinates if available
       if (latitude !== undefined && longitude !== undefined) {
         formData.append('latitude', latitude.toString());
@@ -219,6 +278,104 @@ export const CreateJobScreen: React.FC<CreateJobScreenProps> = ({ navigation, ro
           error={errors.address}
           required
         />
+
+        {/* Schedule Section */}
+        <View style={styles.scheduleSection}>
+          <Text style={styles.label}>Thời gian *</Text>
+          <View style={styles.scheduleToggle}>
+            <TouchableOpacity
+              style={[
+                styles.scheduleOption,
+                scheduleMode === 'NOW' && styles.scheduleOptionActive,
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setScheduleMode('NOW')}
+            >
+              <MaterialCommunityIcons
+                name="lightning-bolt"
+                size={18}
+                color={scheduleMode === 'NOW' ? colors.text.inverse : colors.success[500]}
+              />
+              <Text
+                style={[
+                  styles.scheduleOptionText,
+                  scheduleMode === 'NOW' && styles.scheduleOptionTextActive,
+                ]}
+              >
+                Ngay bây giờ
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.scheduleOption,
+                scheduleMode === 'SCHEDULED' && styles.scheduleOptionActive,
+              ]}
+              activeOpacity={0.7}
+              onPress={() => setScheduleMode('SCHEDULED')}
+            >
+              <MaterialCommunityIcons
+                name="calendar-clock"
+                size={18}
+                color={scheduleMode === 'SCHEDULED' ? colors.text.inverse : colors.success[500]}
+              />
+              <Text
+                style={[
+                  styles.scheduleOptionText,
+                  scheduleMode === 'SCHEDULED' && styles.scheduleOptionTextActive,
+                ]}
+              >
+                Chọn thời gian
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {scheduleMode === 'SCHEDULED' && (
+            <View style={styles.dateTimeRow}>
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="calendar" size={20} color={colors.success[600]} />
+                <Text style={styles.dateTimeText}>{formatDate(scheduledDate)}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dateTimeButton}
+                onPress={() => setShowTimePicker(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="clock-outline" size={20} color={colors.success[600]} />
+                <Text style={styles.dateTimeText}>{formatTime(scheduledDate)}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {errors.schedule && (
+            <Text style={styles.errorText}>{errors.schedule}</Text>
+          )}
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={scheduledDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={new Date()}
+              onChange={onDateChange}
+            />
+          )}
+
+          {showTimePicker && (
+            <DateTimePicker
+              value={scheduledDate}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              is24Hour={true}
+              onChange={onTimeChange}
+            />
+          )}
+        </View>
 
         <View style={styles.selectGroup}>
           <Select
@@ -312,6 +469,63 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     marginTop: spacing[1],
   },
+
+  /* ── Schedule Section ──────────────── */
+  scheduleSection: {
+    marginBottom: spacing[1],
+  },
+  scheduleToggle: {
+    flexDirection: 'row',
+    gap: spacing[2],
+  },
+  scheduleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.success[500],
+    backgroundColor: colors.background.white,
+  },
+  scheduleOptionActive: {
+    backgroundColor: colors.success[500],
+    borderColor: colors.success[500],
+  },
+  scheduleOptionText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.success[500],
+  },
+  scheduleOptionTextActive: {
+    color: colors.text.inverse,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginTop: spacing[3],
+  },
+  dateTimeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.success[50],
+    borderWidth: 1,
+    borderColor: colors.success[100],
+  },
+  dateTimeText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.text.primary,
+  },
+
+  /* ── Images ────────────────────────── */
   imageSection: {
     marginTop: spacing[2],
   },
@@ -376,4 +590,3 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
   },
 });
-

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { JobsScreen } from '../screens/jobs/JobsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
@@ -58,14 +59,14 @@ export const MainTabs: React.FC = () => {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#0284c7',
+          backgroundColor: '#16a34a',
         },
         headerTintColor: '#fff',
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        tabBarActiveTintColor: '#0284c7',
-        tabBarInactiveTintColor: '#64748b',
+        tabBarActiveTintColor: '#16a34a',
+        tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
@@ -88,9 +89,11 @@ export const MainTabs: React.FC = () => {
             title: 'Trang chủ',
             tabBarLabel: 'Trang chủ',
             tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Text style={[styles.icon, { color }]}>🏠</Text>
-              </View>
+              <MaterialCommunityIcons
+                name={focused ? 'home' : 'home-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />
@@ -103,9 +106,11 @@ export const MainTabs: React.FC = () => {
             title: userRole === 'EMPLOYER' ? 'Công việc đã đăng' : 'Công việc',
             tabBarLabel: userRole === 'EMPLOYER' ? 'Đã đăng' : 'Công việc',
             tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Text style={[styles.icon, { color }]}>💼</Text>
-              </View>
+              <MaterialCommunityIcons
+                name={focused ? 'briefcase' : 'briefcase-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />
@@ -119,7 +124,11 @@ export const MainTabs: React.FC = () => {
             tabBarLabel: 'Thông báo',
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconContainer}>
-                <Text style={[styles.icon, { color }]}>🔔</Text>
+                <MaterialCommunityIcons
+                  name={focused ? 'bell' : 'bell-outline'}
+                  size={24}
+                  color={color}
+                />
                 {totalUnreadCount > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>
@@ -140,9 +149,11 @@ export const MainTabs: React.FC = () => {
             title: 'Hồ sơ',
             tabBarLabel: 'Hồ sơ',
             tabBarIcon: ({ color, focused }) => (
-              <View style={styles.iconContainer}>
-                <Text style={[styles.icon, { color }]}>👤</Text>
-              </View>
+              <MaterialCommunityIcons
+                name={focused ? 'account' : 'account-outline'}
+                size={24}
+                color={color}
+              />
             ),
           }}
         />
@@ -156,9 +167,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  icon: {
-    fontSize: 22,
   },
   badge: {
     position: 'absolute',

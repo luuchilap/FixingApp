@@ -103,6 +103,7 @@ async function getJobWithImages(jobId) {
     status: job.status,
     acceptedWorkerId: job.accepted_worker_id,
     handoverDeadline: job.handover_deadline,
+    scheduledAt: job.scheduled_at,
     latitude: job.latitude,
     longitude: job.longitude,
     createdAt: job.created_at,
@@ -119,9 +120,12 @@ async function getJobWithImages(jobId) {
  */
 async function createJob(req, res, next) {
   try {
-    const { title, description, price, address, requiredSkill, latitude, longitude } = req.body;
+    const { title, description, price, address, requiredSkill, latitude, longitude, scheduledAt } = req.body;
     let { images } = req.body; // Existing URLs if any
     const employerId = req.user.id;
+
+    console.log('[createJob] req.body keys:', Object.keys(req.body));
+    console.log('[createJob] scheduledAt:', scheduledAt, typeof scheduledAt);
 
     // Validation
     if (!title || !description || !price || !address) {
@@ -192,6 +196,9 @@ async function createJob(req, res, next) {
 
     const now = Date.now();
 
+    // Parse scheduledAt (epoch ms); null means immediate
+    const parsedScheduledAt = scheduledAt ? parseInt(scheduledAt) : null;
+
     // Normalize skill to ensure it matches one of the fixed skill values
     const normalizedSkill = normalizeSkill(requiredSkill);
 
@@ -201,11 +208,11 @@ async function createJob(req, res, next) {
       const jobResult = await client.query(`
         INSERT INTO jobs (
           employer_id, title, description, price, address, required_skill,
-          status, latitude, longitude, created_at, updated_at
+          status, latitude, longitude, scheduled_at, created_at, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, 'CHUA_LAM', $7, $8, $9, $10, $11)
         RETURNING id
-      `, [employerId, title, description, parsedPrice, address, normalizedSkill, jobLatitude, jobLongitude, now, now]);
+      `, [employerId, title, description, parsedPrice, address, normalizedSkill, jobLatitude, jobLongitude, parsedScheduledAt, now, now]);
       const jobId = jobResult.rows[0].id;
 
       // Insert images if provided
@@ -355,6 +362,7 @@ async function listJobs(req, res, next) {
           status: job.status,
           acceptedWorkerId: job.accepted_worker_id,
           handoverDeadline: job.handover_deadline,
+          scheduledAt: job.scheduled_at,
           latitude: job.latitude,
           longitude: job.longitude,
           createdAt: job.created_at,
@@ -457,7 +465,7 @@ async function getMyJobs(req, res, next) {
 async function updateJob(req, res, next) {
   try {
     const { jobId } = req.params;
-    const { title, description, price, address, requiredSkill, latitude, longitude } = req.body;
+    const { title, description, price, address, requiredSkill, latitude, longitude, scheduledAt } = req.body;
     let { images } = req.body; // Existing URLs to keep if any
     const employerId = req.user.id;
 
@@ -559,6 +567,10 @@ async function updateJob(req, res, next) {
       const normalizedSkill = normalizeSkill(requiredSkill);
       updates.push(`required_skill = $${paramIndex++}`);
       values.push(normalizedSkill);
+    }
+    if (scheduledAt !== undefined) {
+      updates.push(`scheduled_at = $${paramIndex++}`);
+      values.push(scheduledAt ? parseInt(scheduledAt) : null);
     }
 
     const now = Date.now();

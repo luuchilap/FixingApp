@@ -25,8 +25,8 @@ export const MainStack: React.FC = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen 
-        name="MainTabs" 
+      <Stack.Screen
+        name="MainTabs"
         component={MainTabs}
       />
       <Stack.Screen
@@ -36,7 +36,7 @@ export const MainStack: React.FC = () => {
           headerShown: true,
           title: 'Chi tiết công việc',
           headerStyle: {
-            backgroundColor: '#0284c7',
+            backgroundColor: '#16a34a',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {
@@ -51,7 +51,7 @@ export const MainStack: React.FC = () => {
           headerShown: true,
           title: 'Đăng công việc',
           headerStyle: {
-            backgroundColor: '#0284c7',
+            backgroundColor: '#16a34a',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {
@@ -66,7 +66,7 @@ export const MainStack: React.FC = () => {
           headerShown: true,
           title: 'Tin nhắn',
           headerStyle: {
-            backgroundColor: '#0284c7',
+            backgroundColor: '#16a34a',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {
@@ -80,7 +80,7 @@ export const MainStack: React.FC = () => {
         options={{
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#0284c7',
+            backgroundColor: '#16a34a',
           },
           headerTintColor: '#fff',
           headerTitleStyle: {

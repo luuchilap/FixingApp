@@ -373,6 +373,13 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
           <Text style={styles.value}>{getStatusLabel(job.status)}</Text>
         </View>
 
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Bắt đầu lúc</Text>
+          <Text style={styles.value}>
+            {job.scheduledAt ? formatDate(job.scheduledAt) : 'Ngay bây giờ'}
+          </Text>
+        </View>
+
         {job.handoverDeadline && (
           <View style={styles.infoRow}>
             <Text style={styles.label}>Hạn bàn giao</Text>

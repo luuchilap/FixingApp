@@ -10,6 +10,7 @@ export interface Job {
   status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'CHUA_LAM' | 'DANG_BAN_GIAO';
   acceptedWorkerId?: number;
   handoverDeadline?: string;
+  scheduledAt?: number | null;
   createdAt: string;
   updatedAt: string;
   employerName?: string;
