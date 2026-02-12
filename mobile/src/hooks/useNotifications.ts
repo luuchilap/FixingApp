@@ -35,10 +35,10 @@ export const useNotifications = () => {
   useEffect(() => {
     loadNotifications();
 
-    // Poll for updates every 15 seconds
+    // Poll for updates every 30 seconds
     const interval = setInterval(() => {
       loadNotifications();
-    }, 15000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [loadNotifications]);

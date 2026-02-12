@@ -30,9 +30,13 @@ const pool = new Pool({
   } : false
 });
 
-// Test the connection
+// Test the connection (log once at startup)
+let poolConnected = false;
 pool.on('connect', () => {
-  console.log('Database connection pool created');
+  if (!poolConnected) {
+    poolConnected = true;
+    console.log('Database connection pool created');
+  }
 });
 
 pool.on('error', (err) => {

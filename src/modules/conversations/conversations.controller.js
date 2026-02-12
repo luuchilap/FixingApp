@@ -102,39 +102,41 @@ async function listConversations(req, res, next) {
 
     const conversationsResult = await db.query(query, params);
 
-    // Get last message for each conversation
-    const conversationsWithMessages = await Promise.all(
-      conversationsResult.rows.map(async (conv) => {
-        const lastMessageResult = await db.query(`
-          SELECT id, content, sender_id as "senderId", created_at as "createdAt"
-          FROM messages
-          WHERE conversation_id = $1
-          ORDER BY created_at DESC
-          LIMIT 1
-        `, [conv.id]);
-        const lastMessage = lastMessageResult.rows[0] || null;
-
-        return {
-          id: conv.id,
-          jobId: conv.jobId,
-          jobTitle: conv.jobTitle,
-          employerId: conv.employerId,
-          employerName: conv.employerName,
-          employerPhone: conv.employerPhone,
-          workerId: conv.workerId,
-          workerName: conv.workerName,
-          workerPhone: conv.workerPhone,
-          lastMessage: lastMessage ? {
-            id: lastMessage.id,
-            content: lastMessage.content,
-            senderId: lastMessage.senderId,
-            createdAt: lastMessage.createdAt
-          } : null,
-          unreadCount: conv.unreadCount || 0,
-          updatedAt: conv.updatedAt
+    // Batch-fetch last messages (avoids N+1)
+    const convIds = conversationsResult.rows.map(c => c.id);
+    const lastMessageByConvId = {};
+    if (convIds.length > 0) {
+      const lastMsgResult = await db.query(`
+        SELECT DISTINCT ON (conversation_id)
+          conversation_id, id, content, sender_id as "senderId", created_at as "createdAt"
+        FROM messages
+        WHERE conversation_id = ANY($1)
+        ORDER BY conversation_id, created_at DESC
+      `, [convIds]);
+      for (const msg of lastMsgResult.rows) {
+        lastMessageByConvId[msg.conversation_id] = {
+          id: msg.id,
+          content: msg.content,
+          senderId: msg.senderId,
+          createdAt: msg.createdAt,
         };
-      })
-    );
+      }
+    }
+
+    const conversationsWithMessages = conversationsResult.rows.map((conv) => ({
+      id: conv.id,
+      jobId: conv.jobId,
+      jobTitle: conv.jobTitle,
+      employerId: conv.employerId,
+      employerName: conv.employerName,
+      employerPhone: conv.employerPhone,
+      workerId: conv.workerId,
+      workerName: conv.workerName,
+      workerPhone: conv.workerPhone,
+      lastMessage: lastMessageByConvId[conv.id] || null,
+      unreadCount: conv.unreadCount || 0,
+      updatedAt: conv.updatedAt,
+    }));
 
     res.status(200).json(conversationsWithMessages);
   } catch (error) {
@@ -544,20 +546,18 @@ async function markAsRead(req, res, next) {
       });
     }
 
-    // Mark all messages from the other person as read
+    // Mark all messages from the other person as read + reset unread count in parallel
     const otherUserId = userRole === 'EMPLOYER' ? conversation.worker_id : conversation.employer_id;
-    const updateResult = await db.query(`
-      UPDATE messages 
-      SET is_read = TRUE 
-      WHERE conversation_id = $1 AND sender_id = $2 AND is_read = FALSE
-    `, [conversationId, otherUserId]);
+    const unreadColumn = userRole === 'EMPLOYER' ? 'employer_unread_count' : 'worker_unread_count';
 
-    // Reset unread count
-    if (userRole === 'EMPLOYER') {
-      await db.query('UPDATE conversations SET employer_unread_count = 0 WHERE id = $1', [conversationId]);
-    } else {
-      await db.query('UPDATE conversations SET worker_unread_count = 0 WHERE id = $1', [conversationId]);
-    }
+    const [updateResult] = await Promise.all([
+      db.query(`
+        UPDATE messages 
+        SET is_read = TRUE 
+        WHERE conversation_id = $1 AND sender_id = $2 AND is_read = FALSE
+      `, [conversationId, otherUserId]),
+      db.query(`UPDATE conversations SET ${unreadColumn} = 0 WHERE id = $1`, [conversationId]),
+    ]);
 
     res.status(200).json({
       success: true,

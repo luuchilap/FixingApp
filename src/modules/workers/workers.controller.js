@@ -62,7 +62,6 @@ async function listWorkers(req, res, next) {
 
     res.status(200).json(formattedWorkers);
   } catch (error) {
-    console.error('Error listing workers:', error);
     next(error);
   }
 }

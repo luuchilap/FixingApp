@@ -300,16 +300,24 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
 </html>`;
   }, [validMarkers, center, fitBounds, route]);
 
-  // Send updated markers to WebView when markers change
+  // Track if initial HTML has loaded (skip redundant postMessage on first render)
+  const isInitialRender = useRef(true);
+
+  // Send updated markers to WebView only after initial load
   useEffect(() => {
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
+    }
     if (webViewRef.current && validMarkers.length > 0) {
       const message = JSON.stringify({
         type: 'updateMarkers',
         markers: validMarkers,
+        route: route || undefined,
       });
       webViewRef.current.postMessage(message);
     }
-  }, [validMarkers]);
+  }, [validMarkers, route]);
 
   if (loading) {
     return (

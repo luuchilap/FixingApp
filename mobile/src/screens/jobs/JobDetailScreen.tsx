@@ -32,54 +32,13 @@ import { MainStackParamList } from '../../navigation/MainStack';
 import { JobLocationMap, MapMarker, RouteInfo } from '../../components/ui/JobLocationMap';
 import { useLocationTracking, useCurrentLocation } from '../../hooks/useLocationTracking';
 import { getUserLocation } from '../../services/usersApi';
+import { parseTimestamp, formatPrice, getStatusLabel } from '../../utils/format';
 
 type JobDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'JobDetail'>;
 
 const getSkillLabel = (skillValue: string): string => {
   const skill = SKILLS.find(s => s.value === skillValue);
   return skill?.label || skillValue;
-};
-
-const getStatusLabel = (status: Job['status']): string => {
-  const statusMap: Record<string, string> = {
-    'CHUA_LAM': 'Đang nhận đơn',
-    'DANG_BAN_GIAO': 'Đang bàn giao',
-    'OPEN': 'Mở',
-    'IN_PROGRESS': 'Đang thực hiện',
-    'COMPLETED': 'Đã hoàn thành',
-    'CANCELLED': 'Đã hủy',
-  };
-  return statusMap[status] || status;
-};
-
-const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-  }).format(price);
-};
-
-const parseTimestamp = (timestamp: string | number | null | undefined): Date | null => {
-  if (!timestamp) return null;
-
-  let numValue: number;
-  if (typeof timestamp === 'string') {
-    // Try to parse as number first
-    numValue = Number(timestamp);
-    if (isNaN(numValue)) {
-      // If not a number, try to parse as date string
-      const date = new Date(timestamp);
-      return isNaN(date.getTime()) ? null : date;
-    }
-  } else {
-    numValue = timestamp;
-  }
-
-  // If timestamp is in seconds (less than year 2001 in ms), convert to ms
-  if (numValue < 100000000000) {
-    return new Date(numValue * 1000);
-  }
-  return new Date(numValue);
 };
 
 const formatDate = (dateString: string | number | null | undefined): string => {

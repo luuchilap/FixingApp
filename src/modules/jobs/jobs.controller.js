@@ -22,50 +22,38 @@ async function notifyNearbyWorkersForJob(job, radiusKm = 5) {
       return;
     }
 
-    // Find workers with an address
+    // Find workers with stored coordinates (no geocoding needed)
     const workersResult = await db.query(
       `
-      SELECT u.id, u.address
+      SELECT u.id, u.latitude, u.longitude
       FROM users u
       JOIN user_roles ur ON u.id = ur.user_id
       JOIN roles r ON ur.role_id = r.id
       WHERE r.name = 'WORKER'
-        AND u.address IS NOT NULL
-        AND TRIM(u.address) <> ''
+        AND u.latitude IS NOT NULL
+        AND u.longitude IS NOT NULL
     `
     );
 
+    const notifications = [];
     for (const worker of workersResult.rows) {
-      try {
-        const geocodeResult = await geocode(worker.address);
-        const workerLat = geocodeResult.latitude;
-        const workerLon = geocodeResult.longitude;
+      const workerLat = parseFloat(worker.latitude);
+      const workerLon = parseFloat(worker.longitude);
 
-        if (
-          workerLat == null ||
-          workerLon == null ||
-          !isFinite(workerLat) ||
-          !isFinite(workerLon)
-        ) {
-          continue;
-        }
+      if (!isFinite(workerLat) || !isFinite(workerLon)) continue;
 
-        const distance = calculateDistance(jobLat, jobLon, workerLat, workerLon);
-        if (distance <= radiusKm) {
-          await sendNotification(
+      const distance = calculateDistance(jobLat, jobLon, workerLat, workerLon);
+      if (distance <= radiusKm) {
+        notifications.push(
+          sendNotification(
             worker.id,
             'Job mới được đăng gần bạn',
             { type: 'JOB_NEARBY', jobId: job.id }
-          );
-        }
-      } catch (geocodeError) {
-        // If geocoding worker address fails, skip this worker
-        console.warn(
-          'Failed to geocode worker address for nearby job notification:',
-          geocodeError.message
+          )
         );
       }
     }
+    await Promise.allSettled(notifications);
   } catch (error) {
     console.error('Error notifying nearby workers for job:', error);
   }
@@ -124,9 +112,6 @@ async function createJob(req, res, next) {
     let { images } = req.body; // Existing URLs if any
     const employerId = req.user.id;
 
-    console.log('[createJob] req.body keys:', Object.keys(req.body));
-    console.log('[createJob] scheduledAt:', scheduledAt, typeof scheduledAt);
-
     // Validation
     if (!title || !description || !price || !address) {
       return res.status(400).json({
@@ -164,10 +149,8 @@ async function createJob(req, res, next) {
     const s3ImageUrls = [];
 
     if (uploadedFiles.length > 0) {
-      for (const file of uploadedFiles) {
-        const url = await uploadToS3(file);
-        s3ImageUrls.push(url);
-      }
+      const uploaded = await Promise.all(uploadedFiles.map(file => uploadToS3(file)));
+      s3ImageUrls.push(...uploaded);
     }
 
     // Combine existing URLs and new S3 URLs
@@ -341,51 +324,52 @@ async function listJobs(req, res, next) {
 
     const jobsResult = await db.query(query, params);
 
-    // Get images for each job and filter by distance if needed
+    // Batch-fetch images for all jobs in one query (avoids N+1)
     const userLat = latitude ? parseFloat(latitude) : null;
     const userLon = longitude ? parseFloat(longitude) : null;
     const maxDist = maxDistance ? parseFloat(maxDistance) : null;
 
-    const jobsWithImages = await Promise.all(
-      jobsResult.rows.map(async (job) => {
-        const imagesResult = await db.query('SELECT * FROM job_images WHERE job_id = $1 ORDER BY is_primary DESC, id ASC', [job.id]);
-        return {
-          id: job.id,
-          employerId: job.employer_id,
-          employerName: job.employer_name,
-          employerPhone: job.employer_phone,
-          title: job.title,
-          description: job.description,
-          price: job.price,
-          address: job.address,
-          requiredSkill: job.required_skill,
-          status: job.status,
-          acceptedWorkerId: job.accepted_worker_id,
-          handoverDeadline: job.handover_deadline,
-          scheduledAt: job.scheduled_at,
-          latitude: job.latitude,
-          longitude: job.longitude,
-          createdAt: job.created_at,
-          updatedAt: job.updated_at,
-          images: imagesResult.rows.map(img => ({
-            type: 'IMAGE',
-            url: img.image_url
-          })),
-          // Calculate distance if user location provided
-          distance: (userLat && userLon && job.latitude != null && job.longitude != null)
-            ? calculateDistance(userLat, userLon, parseFloat(job.latitude), parseFloat(job.longitude))
-            : null
-        };
-      })
-    );
+    const jobIds = jobsResult.rows.map(j => j.id);
+    const imagesByJobId = {};
+    if (jobIds.length > 0) {
+      const imagesResult = await db.query(
+        'SELECT * FROM job_images WHERE job_id = ANY($1) ORDER BY is_primary DESC, id ASC',
+        [jobIds]
+      );
+      for (const img of imagesResult.rows) {
+        if (!imagesByJobId[img.job_id]) imagesByJobId[img.job_id] = [];
+        imagesByJobId[img.job_id].push({ type: 'IMAGE', url: img.image_url });
+      }
+    }
+
+    const jobsWithImages = jobsResult.rows.map((job) => ({
+      id: job.id,
+      employerId: job.employer_id,
+      employerName: job.employer_name,
+      employerPhone: job.employer_phone,
+      title: job.title,
+      description: job.description,
+      price: job.price,
+      address: job.address,
+      requiredSkill: job.required_skill,
+      status: job.status,
+      acceptedWorkerId: job.accepted_worker_id,
+      handoverDeadline: job.handover_deadline,
+      scheduledAt: job.scheduled_at,
+      latitude: job.latitude,
+      longitude: job.longitude,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      images: imagesByJobId[job.id] || [],
+      distance: (userLat && userLon && job.latitude != null && job.longitude != null)
+        ? calculateDistance(userLat, userLon, parseFloat(job.latitude), parseFloat(job.longitude))
+        : null
+    }));
 
     // Filter by distance if provided
     let filteredJobs = jobsWithImages;
     if (userLat && userLon && maxDist) {
-      // Validate inputs are valid numbers
-      if (isNaN(userLat) || isNaN(userLon) || isNaN(maxDist) || !isFinite(userLat) || !isFinite(userLon) || !isFinite(maxDist)) {
-        console.error('Invalid location filter parameters:', { latitude, longitude, maxDistance, userLat, userLon, maxDist });
-      } else {
+      if (!isNaN(userLat) && !isNaN(userLon) && !isNaN(maxDist) && isFinite(userLat) && isFinite(userLon) && isFinite(maxDist)) {
         filteredJobs = jobsWithImages.filter(job => {
           // Only include jobs with valid coordinates and distance
           if (!job.distance || job.distance === null || job.distance === undefined) {
@@ -449,9 +433,38 @@ async function getMyJobs(req, res, next) {
 
     const jobsResult = await db.query(query, params);
 
-    const jobsWithImages = await Promise.all(
-      jobsResult.rows.map(job => getJobWithImages(job.id))
-    );
+    // Batch-fetch images (avoids N+1: 1 query instead of N)
+    const jobIds = jobsResult.rows.map(j => j.id);
+    const imagesByJobId = {};
+    if (jobIds.length > 0) {
+      const imagesResult = await db.query(
+        'SELECT * FROM job_images WHERE job_id = ANY($1) ORDER BY is_primary DESC, id ASC',
+        [jobIds]
+      );
+      for (const img of imagesResult.rows) {
+        if (!imagesByJobId[img.job_id]) imagesByJobId[img.job_id] = [];
+        imagesByJobId[img.job_id].push({ type: 'IMAGE', url: img.image_url });
+      }
+    }
+
+    const jobsWithImages = jobsResult.rows.map(job => ({
+      id: job.id,
+      employerId: job.employer_id,
+      title: job.title,
+      description: job.description,
+      price: job.price,
+      address: job.address,
+      requiredSkill: job.required_skill,
+      status: job.status,
+      acceptedWorkerId: job.accepted_worker_id,
+      handoverDeadline: job.handover_deadline,
+      scheduledAt: job.scheduled_at,
+      latitude: job.latitude,
+      longitude: job.longitude,
+      createdAt: job.created_at,
+      updatedAt: job.updated_at,
+      images: imagesByJobId[job.id] || []
+    }));
 
     res.status(200).json(jobsWithImages);
   } catch (error) {
@@ -508,10 +521,8 @@ async function updateJob(req, res, next) {
     const s3ImageUrls = [];
 
     if (uploadedFiles.length > 0) {
-      for (const file of uploadedFiles) {
-        const url = await uploadToS3(file);
-        s3ImageUrls.push(url);
-      }
+      const uploaded = await Promise.all(uploadedFiles.map(file => uploadToS3(file)));
+      s3ImageUrls.push(...uploaded);
     }
 
     // Build update query
@@ -613,7 +624,6 @@ async function updateJob(req, res, next) {
 
     res.status(200).json(updatedJob);
   } catch (error) {
-    console.error('Error updating job:', error);
     next(error);
   }
 }

@@ -22,37 +22,13 @@ import {
 } from '../../services/messagesApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
+import { parseTimestamp } from '../../utils/format';
 
 type ChatScreenProps = NativeStackScreenProps<MainStackParamList, 'Chat'>;
 
-const parseTimestamp = (timestamp: number | string | null | undefined): Date => {
-  if (!timestamp) return new Date(NaN);
-  
-  // If it's a string, try to parse it
-  if (typeof timestamp === 'string') {
-    // Check if it's a numeric string (Unix timestamp as string)
-    const numValue = Number(timestamp);
-    if (!isNaN(numValue)) {
-      // It's a numeric string, treat as Unix timestamp
-      if (numValue < 100000000000) {
-        return new Date(numValue * 1000); // seconds to ms
-      }
-      return new Date(numValue);
-    }
-    // Otherwise parse as date string
-    return new Date(timestamp);
-  }
-  
-  // If it's a number
-  if (timestamp < 100000000000) {
-    return new Date(timestamp * 1000); // seconds to ms
-  }
-  return new Date(timestamp);
-};
-
 const formatTime = (timestamp: number | string): string => {
   const date = parseTimestamp(timestamp);
-  if (isNaN(date.getTime())) return '';
+  if (!date || isNaN(date.getTime())) return '';
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
   return `${hours}:${minutes}`;

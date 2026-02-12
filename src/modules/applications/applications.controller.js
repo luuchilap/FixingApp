@@ -40,20 +40,7 @@ async function applyToJob(req, res, next) {
       });
     }
 
-    // Check if already applied
-    const existingApplicationResult = await db.query(`
-      SELECT * FROM job_applications 
-      WHERE job_id = $1 AND worker_id = $2
-    `, [parseInt(jobId), workerId]);
-
-    if (existingApplicationResult.rows.length > 0) {
-      return res.status(400).json({
-        error: 'Already applied',
-        message: 'You have already applied to this job'
-      });
-    }
-
-    // Create application
+    // Create application (unique constraint handles duplicates)
     const now = Date.now();
     try {
       const result = await db.query(`
@@ -67,19 +54,19 @@ async function applyToJob(req, res, next) {
       const workerResult = await db.query('SELECT full_name, phone FROM users WHERE id = $1', [workerId]);
       const workerName = workerResult.rows[0]?.full_name || workerResult.rows[0]?.phone || 'Một người lao động';
 
-      // Send notification to employer
-      await sendNotification(
-        job.employer_id,
-        `${workerName} vừa ứng tuyển công việc "${job.title}"`,
-        { type: 'JOB_APPLIED', jobId: job.id }
-      );
-
-      // Send notification to worker (confirmation)
-      await sendNotification(
-        workerId,
-        `Bạn đã ứng tuyển công việc "${job.title}"`,
-        { type: 'JOB_APPLIED', jobId: job.id }
-      );
+      // Send notifications in parallel
+      Promise.allSettled([
+        sendNotification(
+          job.employer_id,
+          `${workerName} vừa ứng tuyển công việc "${job.title}"`,
+          { type: 'JOB_APPLIED', jobId: job.id }
+        ),
+        sendNotification(
+          workerId,
+          `Bạn đã ứng tuyển công việc "${job.title}"`,
+          { type: 'JOB_APPLIED', jobId: job.id }
+        ),
+      ]);
 
       res.status(201).json({
         id: application.id,
@@ -261,31 +248,28 @@ async function acceptWorker(req, res, next) {
       ]);
     });
 
-    // Send notification to worker
-    await sendNotification(
-      parseInt(workerId),
-      `Bạn đã được chấp nhận cho công việc "${job.title}"`,
-      { type: 'JOB_ACCEPTED', jobId: job.id }
-    );
+    // Send notifications in parallel (don't block response)
+    Promise.allSettled([
+      sendNotification(
+        parseInt(workerId),
+        `Bạn đã được chấp nhận cho công việc "${job.title}"`,
+        { type: 'JOB_ACCEPTED', jobId: job.id }
+      ),
+      sendNotification(
+        employerId,
+        `Bạn đã chấp nhận ${workerName} cho công việc "${job.title}"`,
+        { type: 'JOB_ACCEPTED', jobId: job.id }
+      ),
+    ]);
 
-    // Send notification to employer (confirmation)
-    await sendNotification(
-      employerId,
-      `Bạn đã chấp nhận ${workerName} cho công việc "${job.title}"`,
-      { type: 'JOB_ACCEPTED', jobId: job.id }
-    );
-
-    // Get updated job
-    const updatedJobResult = await db.query('SELECT * FROM jobs WHERE id = $1', [parseInt(jobId)]);
-    const updatedJob = updatedJobResult.rows[0];
-
+    // Return response from known values (no re-fetch needed)
     res.status(200).json({
-      id: updatedJob.id,
-      employerId: updatedJob.employer_id,
-      title: updatedJob.title,
-      status: updatedJob.status,
-      acceptedWorkerId: updatedJob.accepted_worker_id,
-      handoverDeadline: updatedJob.handover_deadline,
+      id: job.id,
+      employerId: job.employer_id,
+      title: job.title,
+      status: 'DANG_BAN_GIAO',
+      acceptedWorkerId: parseInt(workerId),
+      handoverDeadline: now + (30 * 24 * 60 * 60 * 1000),
       acceptedAt: now
     });
   } catch (error) {

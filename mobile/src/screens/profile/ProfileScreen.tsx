@@ -21,6 +21,7 @@ import { getCurrentUser, updateUserProfile, UserProfile } from '../../services/u
 import { getMyApplications, ApplicationWithJob } from '../../services/applicationsApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
+import { formatPrice, getStatusLabel, getStatusColor } from '../../utils/format';
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList>;
 
@@ -235,41 +236,6 @@ export const ProfileScreen: React.FC = () => {
     return roleMap[role] || role;
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
-
-  const getStatusLabel = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      'OPEN': 'Đang mở',
-      'IN_PROGRESS': 'Đang thực hiện',
-      'COMPLETED': 'Hoàn thành',
-      'CANCELLED': 'Đã hủy',
-      'APPLIED': 'Đã ứng tuyển',
-      'ACCEPTED': 'Được chấp nhận',
-      'REJECTED': 'Bị từ chối',
-      'PENDING': 'Chờ xử lý',
-    };
-    return statusMap[status] || status;
-  };
-
-  const getStatusColor = (status: string): string => {
-    const colorMap: Record<string, string> = {
-      'OPEN': colors.success[500],
-      'IN_PROGRESS': colors.warning[500],
-      'COMPLETED': colors.primary[500],
-      'CANCELLED': colors.error[500],
-      'APPLIED': colors.primary[500],
-      'ACCEPTED': colors.success[500],
-      'REJECTED': colors.error[500],
-      'PENDING': colors.warning[500],
-    };
-    return colorMap[status] || colors.neutral[500];
-  };
-
   const handleJobPress = (jobId: number) => {
     navigation.navigate('JobDetail', { jobId });
   };
@@ -393,7 +359,7 @@ export const ProfileScreen: React.FC = () => {
                     <Text style={styles.jobTitle} numberOfLines={2}>
                       {application.job?.title || 'Chưa có'}
                     </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) }]}>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status, colors) }]}>
                       <Text style={styles.statusText}>{getStatusLabel(application.status)}</Text>
                     </View>
                   </View>

@@ -150,15 +150,6 @@ export function useLocationTracking({
     };
   }, [enabled, permissionGranted, intervalMs, updateAndFetch]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-
   return {
     myLocation,
     trackedLocations,

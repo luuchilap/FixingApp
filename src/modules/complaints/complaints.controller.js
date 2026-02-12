@@ -138,9 +138,34 @@ async function getMyComplaints(req, res, next) {
       ORDER BY id DESC
     `, [userId]);
 
-    const complaintsWithEvidences = await Promise.all(
-      complaintsResult.rows.map(complaint => getComplaintWithEvidences(complaint.id))
-    );
+    // Batch-fetch evidences (avoids N+1)
+    const complaintIds = complaintsResult.rows.map(c => c.id);
+    const evidencesByComplaintId = {};
+    if (complaintIds.length > 0) {
+      const evidencesResult = await db.query(
+        'SELECT * FROM complaint_evidences WHERE complaint_id = ANY($1)',
+        [complaintIds]
+      );
+      for (const ev of evidencesResult.rows) {
+        if (!evidencesByComplaintId[ev.complaint_id]) evidencesByComplaintId[ev.complaint_id] = [];
+        evidencesByComplaintId[ev.complaint_id].push({
+          id: ev.id,
+          type: ev.evidence_type,
+          url: ev.evidence_url,
+        });
+      }
+    }
+
+    const complaintsWithEvidences = complaintsResult.rows.map(c => ({
+      id: c.id,
+      jobId: c.job_id,
+      createdBy: c.created_by,
+      reason: c.reason,
+      status: c.status,
+      adminNotes: c.admin_notes,
+      resolvedAt: c.resolved_at,
+      evidences: evidencesByComplaintId[c.id] || [],
+    }));
 
     res.status(200).json(complaintsWithEvidences);
   } catch (error) {
