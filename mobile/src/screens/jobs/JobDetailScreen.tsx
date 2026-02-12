@@ -151,15 +151,15 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     }
   }, [jobId, user?.role]);
 
-  // Fetch worker location for employer when there are applications with APPLIED status
+  // Fetch worker location for employer (accepted worker or first applied worker)
   useEffect(() => {
     if (user?.role !== 'EMPLOYER' || !applications.length) return;
 
-    // For each applied/accepted worker, try to fetch their location
     const fetchWorkerLocations = async () => {
-      if (acceptedApplication) {
+      const targetWorker = acceptedApplication || applications.find(app => app.status === 'APPLIED');
+      if (targetWorker) {
         try {
-          const loc = await getUserLocation(acceptedApplication.workerId);
+          const loc = await getUserLocation(targetWorker.workerId);
           setWorkerLocationForEmployer({
             latitude: loc.latitude,
             longitude: loc.longitude,
@@ -445,20 +445,45 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     workerLocationForEmployer, acceptedApplication,
   ]);
 
-  // Compute route from worker's current location to job location
+  // Compute route: worker location → job location (both roles see the same route)
   const mapRoute = useMemo((): RouteInfo | null => {
-    if (!isWorker || !hasJobLocation || !workerCurrentLocation) return null;
-    return {
-      from: {
-        latitude: workerCurrentLocation.latitude,
-        longitude: workerCurrentLocation.longitude,
-      },
-      to: {
-        latitude: jobLat!,
-        longitude: jobLng!,
-      },
-    };
-  }, [isWorker, hasJobLocation, workerCurrentLocation, jobLat, jobLng]);
+    if (!hasJobLocation) return null;
+
+    // Worker: route from my location to job
+    if (isWorker && workerCurrentLocation) {
+      return {
+        from: {
+          latitude: workerCurrentLocation.latitude,
+          longitude: workerCurrentLocation.longitude,
+        },
+        to: { latitude: jobLat!, longitude: jobLng! },
+      };
+    }
+
+    // Employer: route from worker location to job
+    if (isEmployer) {
+      const trackedWorker = trackedLocations.find(
+        t => t.userId === acceptedApplication?.workerId
+      );
+      const wLoc =
+        trackedWorker?.latitude && trackedWorker?.longitude
+          ? { latitude: trackedWorker.latitude, longitude: trackedWorker.longitude }
+          : workerLocationForEmployer?.latitude && workerLocationForEmployer?.longitude
+            ? { latitude: workerLocationForEmployer.latitude, longitude: workerLocationForEmployer.longitude }
+            : null;
+      if (wLoc) {
+        return {
+          from: { latitude: wLoc.latitude, longitude: wLoc.longitude },
+          to: { latitude: jobLat!, longitude: jobLng! },
+        };
+      }
+    }
+
+    return null;
+  }, [
+    isWorker, isEmployer, hasJobLocation, workerCurrentLocation, jobLat, jobLng,
+    trackedLocations, workerLocationForEmployer, acceptedApplication,
+  ]);
 
   const mapTitle = useMemo(() => {
     if (isWorker) {
@@ -473,9 +498,14 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     return '';
   }, [isWorker, isEmployer, isAccepted, applications.length]);
 
-  const showWorkerMap = isWorker && hasJobLocation;
+  // Hide map when worker's application was rejected (save resources)
+  const isWorkerRejected = isWorker && myApplication?.status === 'REJECTED';
+  const showWorkerMap = isWorker && hasJobLocation && !isWorkerRejected;
+
+  // Hide employer map when all applications are rejected
+  const hasNonRejectedApplications = applications.some(app => app.status !== 'REJECTED');
   const showEmployerMap = isEmployer && !!job && job.employerId === user?.id && 
-    hasJobLocation && applications.length > 0;
+    hasJobLocation && applications.length > 0 && hasNonRejectedApplications;
 
   if (loading) {
     return (
@@ -622,7 +652,7 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
         </Card>
       )}
 
-      {/* Map Section - Employer sees worker location after application */}
+      {/* Map Section - Employer sees worker location + route after application */}
       {showEmployerMap && (
         <Card variant="default" padding={4} style={styles.mapCard}>
           <JobLocationMap
@@ -630,25 +660,33 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
             height={300}
             title={mapTitle}
             loading={trackingLoading}
-            lastUpdated={isAccepted ? (mapLastUpdated || undefined) : undefined}
-            route={null}
+            lastUpdated={mapLastUpdated || undefined}
+            route={mapRoute}
           />
-          {isAccepted && (
-            <View style={styles.mapLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
-                <Text style={styles.legendText}>🏠 Vị trí công việc</Text>
-              </View>
+          <View style={styles.mapLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+              <Text style={styles.legendText}>🏠 Vị trí công việc</Text>
+            </View>
+            {(isAccepted || workerLocationForEmployer) && (
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
-                <Text style={styles.legendText}>🔧 {acceptedApplication?.worker?.fullName || 'Thợ'}</Text>
+                <Text style={styles.legendText}>🔧 {acceptedApplication?.worker?.fullName || 'Thợ ứng tuyển'}</Text>
               </View>
+            )}
+            {isAccepted && trackingMyLocation && (
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#22c55e' }]} />
                 <Text style={styles.legendText}>📍 Vị trí của tôi</Text>
               </View>
-            </View>
-          )}
+            )}
+            {mapRoute && (
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#0284c7' }]} />
+                <Text style={styles.legendText}>Đường đi</Text>
+              </View>
+            )}
+          </View>
         </Card>
       )}
 
