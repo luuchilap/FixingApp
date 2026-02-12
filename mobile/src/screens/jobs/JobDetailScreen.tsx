@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,7 +31,7 @@ import { MainStackParamList } from '../../navigation/MainStack';
 import { JobLocationMap, MapMarker, RouteInfo } from '../../components/ui/JobLocationMap';
 import { useLocationTracking, useCurrentLocation } from '../../hooks/useLocationTracking';
 import { getUserLocation } from '../../services/usersApi';
-import { parseTimestamp, formatPrice, getStatusLabel } from '../../utils/format';
+import { parseTimestamp, formatPrice, getStatusLabel, getStatusColor } from '../../utils/format';
 
 type JobDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'JobDetail'>;
 
@@ -63,14 +62,12 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const [error, setError] = useState<string | null>(null);
   const [applications, setApplications] = useState<ApplicationWithWorker[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(false);
-  const [processingAction, setProcessingAction] = useState(false);
 
   const isEmployer = user?.role === 'EMPLOYER';
   const isWorker = user?.role === 'WORKER';
 
   // Track worker's application status for this job
   const [myApplication, setMyApplication] = useState<ApplicationWithJob | null>(null);
-  const [checkingApplication, setCheckingApplication] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
 
   // Location tracking state
@@ -213,13 +210,10 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     if (user?.role !== 'WORKER') return;
 
     try {
-      setCheckingApplication(true);
       const response = await getMyApplications();
       const applicationForThisJob = response.data.find((app: ApplicationWithJob) => app.jobId === jobId);
       setMyApplication(applicationForThisJob || null);
-    } catch { } finally {
-      setCheckingApplication(false);
-    }
+    } catch { }
   };
 
   const handleApply = async () => {
@@ -277,7 +271,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
           text: 'Chấp nhận',
           onPress: async () => {
             try {
-              setProcessingAction(true);
               await acceptApplication(job.id, application.workerId);
               Alert.alert('Thành công', 'Đã chấp nhận ứng viên!');
               await loadJob();
@@ -286,8 +279,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
               const errorMessage =
                 err instanceof Error ? err.message : 'Không thể chấp nhận đơn ứng tuyển';
               Alert.alert('Lỗi', errorMessage);
-            } finally {
-              setProcessingAction(false);
             }
           },
         },
@@ -308,7 +299,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
           style: 'destructive',
           onPress: async () => {
             try {
-              setProcessingAction(true);
               await rejectApplication(job.id, application.workerId);
               Alert.alert('Thành công', 'Đã từ chối ứng viên.');
               await loadApplications();
@@ -316,8 +306,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
               const errorMessage =
                 err instanceof Error ? err.message : 'Không thể từ chối đơn ứng tuyển';
               Alert.alert('Lỗi', errorMessage);
-            } finally {
-              setProcessingAction(false);
             }
           },
         },
@@ -528,26 +516,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const hasApplied = myApplication !== null;
   const canApply = isWorker && job.status === 'CHUA_LAM' && !job.acceptedWorkerId && !hasApplied;
 
-  const getApplicationStatusLabel = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      'APPLIED': 'Đã ứng tuyển',
-      'ACCEPTED': 'Được chấp nhận',
-      'REJECTED': 'Bị từ chối',
-      'PENDING': 'Chờ xử lý',
-    };
-    return statusMap[status] || status;
-  };
-
-  const getApplicationStatusColor = (status: string): string => {
-    const colorMap: Record<string, string> = {
-      'APPLIED': colors.primary[500],
-      'ACCEPTED': colors.success[500],
-      'REJECTED': colors.error[500],
-      'PENDING': colors.warning[500],
-    };
-    return colorMap[status] || colors.neutral[500];
-  };
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Images */}
@@ -733,10 +701,10 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       {/* Show application status for worker who has applied */}
       {isWorker && hasApplied && myApplication && (
         <View style={styles.actions}>
-          <View style={[styles.applicationStatusCard, { borderColor: getApplicationStatusColor(myApplication.status) }]}>
-            <View style={[styles.applicationStatusBadge, { backgroundColor: getApplicationStatusColor(myApplication.status) }]}>
+          <View style={[styles.applicationStatusCard, { borderColor: getStatusColor(myApplication.status, colors) }]}>
+            <View style={[styles.applicationStatusBadge, { backgroundColor: getStatusColor(myApplication.status, colors) }]}>
               <Text style={styles.applicationStatusText}>
-                {getApplicationStatusLabel(myApplication.status)}
+                {getStatusLabel(myApplication.status)}
               </Text>
             </View>
             <Text style={styles.applicationStatusNote}>

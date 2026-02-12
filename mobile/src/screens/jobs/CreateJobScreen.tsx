@@ -19,7 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
 import { Select } from '../../components/ui/Select';
 import { createJob } from '../../services/jobsApi';
-import { colors, spacing, typography, borderRadius, shadows } from '../../constants/designTokens';
+import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { SKILLS, SkillValue } from '../../constants/skills';
 import { MainStackParamList } from '../../navigation/MainStack';
 

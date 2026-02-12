@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Image,
   ImageProps,
@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { colors, typography, spacing, borderRadius } from '../../constants/designTokens';
 
@@ -24,8 +25,28 @@ export const S3Image: React.FC<S3ImageProps> = ({
   style,
   ...imageProps
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!!uri);
   const [hasError, setHasError] = useState(false);
+  const loadingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset states when uri changes
+  useEffect(() => {
+    setHasError(false);
+    setIsLoading(!!uri);
+
+    // Safety timeout: dismiss loading after 10s even if onLoadEnd never fires
+    if (uri) {
+      loadingTimeout.current = setTimeout(() => {
+        setIsLoading(false);
+      }, 10000);
+    }
+
+    return () => {
+      if (loadingTimeout.current) {
+        clearTimeout(loadingTimeout.current);
+      }
+    };
+  }, [uri]);
 
   // If no URI provided, show placeholder
   if (!uri) {
@@ -51,23 +72,29 @@ export const S3Image: React.FC<S3ImageProps> = ({
 
   return (
     <View style={style}>
-      {showLoadingIndicator && isLoading && (
-        <View style={[styles.loadingOverlay, StyleSheet.absoluteFill]}>
-          <ActivityIndicator size="small" color={colors.primary[500]} />
-        </View>
-      )}
       <Image
         {...imageProps}
-        source={{ uri }}
+        source={{
+          uri,
+          cache: Platform.OS === 'ios' ? 'default' : undefined,
+        }}
         style={[styles.image, style]}
-        onLoadStart={() => setIsLoading(true)}
-        onLoadEnd={() => setIsLoading(false)}
+        onLoad={() => {
+          if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
+          setIsLoading(false);
+        }}
         onError={(error) => {
+          if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
           console.warn('S3Image load error:', uri, error.nativeEvent.error);
           setIsLoading(false);
           setHasError(true);
         }}
       />
+      {showLoadingIndicator && isLoading && (
+        <View style={[styles.loadingOverlay, StyleSheet.absoluteFill]}>
+          <ActivityIndicator size="small" color={colors.primary[500]} />
+        </View>
+      )}
     </View>
   );
 };
