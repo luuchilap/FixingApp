@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,9 @@ import { colors, spacing, typography, borderRadius } from '../../constants/desig
 import { S3Image } from '../../components/ui/S3Image';
 import { SKILLS } from '../../constants/skills';
 import { MainStackParamList } from '../../navigation/MainStack';
+import { JobLocationMap, MapMarker, RouteInfo } from '../../components/ui/JobLocationMap';
+import { useLocationTracking, useCurrentLocation } from '../../hooks/useLocationTracking';
+import { getUserLocation } from '../../services/usersApi';
 
 type JobDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'JobDetail'>;
 
@@ -103,13 +106,53 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [processingAction, setProcessingAction] = useState(false);
 
+  const isEmployer = user?.role === 'EMPLOYER';
+  const isWorker = user?.role === 'WORKER';
+
   // Track worker's application status for this job
   const [myApplication, setMyApplication] = useState<ApplicationWithJob | null>(null);
   const [checkingApplication, setCheckingApplication] = useState(false);
   const [startingChat, setStartingChat] = useState(false);
 
+  // Location tracking state
+  const [workerLocationForEmployer, setWorkerLocationForEmployer] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+  } | null>(null);
+  const [mapLastUpdated, setMapLastUpdated] = useState<string | null>(null);
+
   // Get the accepted worker from applications
   const acceptedApplication = applications.find(app => app.status === 'ACCEPTED');
+
+  // Determine if live tracking should be active
+  // Worker: tracking when their application is ACCEPTED
+  // Employer: tracking when job is DANG_BAN_GIAO and there's an accepted worker
+  const isAccepted = isWorker
+    ? myApplication?.status === 'ACCEPTED'
+    : (job?.status === 'DANG_BAN_GIAO' && !!acceptedApplication);
+
+  // For worker: track employer location (employer = job owner)
+  // For employer: track accepted worker location
+  const trackTargetUserId = useMemo(() => {
+    if (!isAccepted || !job) return [];
+    if (isWorker) return [job.employerId];
+    if (isEmployer && acceptedApplication) return [acceptedApplication.workerId];
+    return [];
+  }, [isAccepted, job, isWorker, isEmployer, acceptedApplication]);
+
+  // Live tracking hook (active only when application is accepted)
+  const {
+    myLocation: trackingMyLocation,
+    trackedLocations,
+    loading: trackingLoading,
+  } = useLocationTracking({
+    enabled: !!isAccepted,
+    intervalMs: 5 * 60 * 1000, // 5 minutes
+    trackUserIds: trackTargetUserId,
+  });
+
+  // Simple current location for worker viewing job (no tracking)
+  const { location: myStaticLocation } = useCurrentLocation(!!isWorker);
 
   const handleMessageWorker = async () => {
     if (!job || !acceptedApplication?.workerId) return;
@@ -148,6 +191,38 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
       checkMyApplication();
     }
   }, [jobId, user?.role]);
+
+  // Fetch worker location for employer when there are applications with APPLIED status
+  useEffect(() => {
+    if (user?.role !== 'EMPLOYER' || !applications.length) return;
+
+    // For each applied/accepted worker, try to fetch their location
+    const fetchWorkerLocations = async () => {
+      if (acceptedApplication) {
+        try {
+          const loc = await getUserLocation(acceptedApplication.workerId);
+          setWorkerLocationForEmployer({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          });
+          if (loc.locationUpdatedAt) {
+            const d = new Date(loc.locationUpdatedAt);
+            setMapLastUpdated(d.toLocaleTimeString('vi-VN'));
+          }
+        } catch {
+          // Worker location may not be available yet
+        }
+      }
+    };
+    fetchWorkerLocations();
+  }, [user?.role, applications, acceptedApplication]);
+
+  // Update map timestamp when tracking updates
+  useEffect(() => {
+    if (trackedLocations.length > 0) {
+      setMapLastUpdated(new Date().toLocaleTimeString('vi-VN'));
+    }
+  }, [trackedLocations]);
 
   const loadJob = async () => {
     try {
@@ -291,6 +366,159 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     );
   };
 
+  // ── Build map markers (must be before early returns for hooks rule) ──
+
+  const jobLat = job?.latitude ? parseFloat(String(job.latitude)) : null;
+  const jobLng = job?.longitude ? parseFloat(String(job.longitude)) : null;
+  const hasJobLocation = !!(jobLat && jobLng && jobLat !== 0 && jobLng !== 0);
+
+  // Worker's current location (use tracking location if accepted, otherwise static)
+  const workerCurrentLocation = isWorker
+    ? (trackingMyLocation || myStaticLocation)
+    : null;
+
+  const mapMarkers = useMemo((): MapMarker[] => {
+    if (!job) return [];
+    const markers: MapMarker[] = [];
+
+    if (isWorker) {
+      if (hasJobLocation) {
+        const trackedEmployer = trackedLocations.find(t => t.userId === job.employerId);
+        if (isAccepted && trackedEmployer?.latitude && trackedEmployer?.longitude) {
+          markers.push({
+            id: 'employer',
+            latitude: trackedEmployer.latitude,
+            longitude: trackedEmployer.longitude,
+            label: job.employerName || 'Người đăng',
+            color: 'red',
+            icon: '🏠',
+          });
+        } else {
+          markers.push({
+            id: 'employer-job',
+            latitude: jobLat!,
+            longitude: jobLng!,
+            label: job.employerName || 'Vị trí công việc',
+            color: 'red',
+            icon: '🏠',
+          });
+        }
+      }
+
+      // Always show worker's current location if available
+      if (workerCurrentLocation) {
+        markers.push({
+          id: 'worker-me',
+          latitude: workerCurrentLocation.latitude,
+          longitude: workerCurrentLocation.longitude,
+          label: 'Vị trí của tôi',
+          color: 'blue',
+          icon: '🔧',
+        });
+      }
+    }
+
+    if (isEmployer) {
+      if (hasJobLocation) {
+        markers.push({
+          id: 'my-job',
+          latitude: jobLat!,
+          longitude: jobLng!,
+          label: 'Vị trí công việc',
+          color: 'red',
+          icon: '🏠',
+        });
+      }
+
+      if (isAccepted) {
+        const trackedWorker = trackedLocations.find(
+          t => t.userId === acceptedApplication?.workerId
+        );
+        if (trackedWorker?.latitude && trackedWorker?.longitude) {
+          markers.push({
+            id: 'tracked-worker',
+            latitude: trackedWorker.latitude,
+            longitude: trackedWorker.longitude,
+            label: acceptedApplication?.worker?.fullName || 'Thợ',
+            color: 'blue',
+            icon: '🔧',
+          });
+        } else if (
+          workerLocationForEmployer?.latitude &&
+          workerLocationForEmployer?.longitude
+        ) {
+          markers.push({
+            id: 'worker-static',
+            latitude: workerLocationForEmployer.latitude,
+            longitude: workerLocationForEmployer.longitude,
+            label: acceptedApplication?.worker?.fullName || 'Thợ',
+            color: 'blue',
+            icon: '🔧',
+          });
+        }
+
+        if (trackingMyLocation) {
+          markers.push({
+            id: 'employer-me',
+            latitude: trackingMyLocation.latitude,
+            longitude: trackingMyLocation.longitude,
+            label: 'Vị trí của tôi',
+            color: 'green',
+            icon: '📍',
+          });
+        }
+      } else if (workerLocationForEmployer?.latitude && workerLocationForEmployer?.longitude) {
+        markers.push({
+          id: 'worker-applied',
+          latitude: workerLocationForEmployer.latitude,
+          longitude: workerLocationForEmployer.longitude,
+          label: acceptedApplication?.worker?.fullName || 'Thợ ứng tuyển',
+          color: 'blue',
+          icon: '🔧',
+        });
+      }
+    }
+
+    return markers;
+  }, [
+    job, isWorker, isEmployer, isAccepted, hasJobLocation, jobLat, jobLng,
+    trackedLocations, trackingMyLocation, workerCurrentLocation,
+    workerLocationForEmployer, acceptedApplication,
+  ]);
+
+  // Compute route from worker's current location to job location
+  const mapRoute = useMemo((): RouteInfo | null => {
+    if (!isWorker || !hasJobLocation || !workerCurrentLocation) return null;
+    return {
+      from: {
+        latitude: workerCurrentLocation.latitude,
+        longitude: workerCurrentLocation.longitude,
+      },
+      to: {
+        latitude: jobLat!,
+        longitude: jobLng!,
+      },
+    };
+  }, [isWorker, hasJobLocation, workerCurrentLocation, jobLat, jobLng]);
+
+  const mapTitle = useMemo(() => {
+    if (isWorker) {
+      if (isAccepted) return '🗺️ Theo dõi vị trí (cập nhật mỗi 5 phút)';
+      return '🗺️ Vị trí công việc';
+    }
+    if (isEmployer) {
+      if (isAccepted) return '🗺️ Theo dõi vị trí (cập nhật mỗi 5 phút)';
+      if (workerLocationForEmployer) return '🗺️ Vị trí thợ ứng tuyển';
+      return '';
+    }
+    return '';
+  }, [isWorker, isEmployer, isAccepted, workerLocationForEmployer]);
+
+  const showWorkerMap = isWorker && hasJobLocation;
+  const showEmployerMap = isEmployer && !!job && job.employerId === user?.id && (
+    isAccepted || (workerLocationForEmployer?.latitude != null)
+  );
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -309,8 +537,6 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
     );
   }
 
-  const isEmployer = user?.role === 'EMPLOYER';
-  const isWorker = user?.role === 'WORKER';
   const hasApplied = myApplication !== null;
   const canApply = isWorker && job.status === 'CHUA_LAM' && !job.acceptedWorkerId && !hasApplied;
 
@@ -405,6 +631,68 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
         <Text style={styles.descriptionTitle}>Mô tả công việc</Text>
         <Text style={styles.description}>{job.description}</Text>
       </Card>
+
+      {/* Map Section - Worker sees employer/job location + route */}
+      {showWorkerMap && (
+        <Card variant="default" padding={4} style={styles.mapCard}>
+          <JobLocationMap
+            markers={mapMarkers}
+            height={300}
+            title={mapTitle}
+            loading={trackingLoading}
+            lastUpdated={isAccepted ? (mapLastUpdated || undefined) : undefined}
+            route={mapRoute}
+          />
+          <View style={styles.mapLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+              <Text style={styles.legendText}>🏠 {job.employerName || 'Vị trí công việc'}</Text>
+            </View>
+            {workerCurrentLocation && (
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={styles.legendText}>🔧 Vị trí của tôi</Text>
+              </View>
+            )}
+            {mapRoute && (
+              <View style={styles.legendItem}>
+                <View style={[styles.legendLine, { backgroundColor: '#0284c7' }]} />
+                <Text style={styles.legendText}>Đường đi</Text>
+              </View>
+            )}
+          </View>
+        </Card>
+      )}
+
+      {/* Map Section - Employer sees worker location after application */}
+      {showEmployerMap && (
+        <Card variant="default" padding={4} style={styles.mapCard}>
+          <JobLocationMap
+            markers={mapMarkers}
+            height={300}
+            title={mapTitle}
+            loading={trackingLoading}
+            lastUpdated={isAccepted ? (mapLastUpdated || undefined) : undefined}
+            route={null}
+          />
+          {isAccepted && (
+            <View style={styles.mapLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
+                <Text style={styles.legendText}>🏠 Vị trí công việc</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#3b82f6' }]} />
+                <Text style={styles.legendText}>🔧 {acceptedApplication?.worker?.fullName || 'Thợ'}</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#22c55e' }]} />
+                <Text style={styles.legendText}>📍 Vị trí của tôi</Text>
+              </View>
+            </View>
+          )}
+        </Card>
+      )}
 
       {/* Applications Section (Employer only) */}
       {isEmployer && job.employerId === user?.id && (
@@ -642,6 +930,38 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
     textAlign: 'center',
+  },
+  mapCard: {
+    margin: spacing[4],
+    marginTop: 0,
+  },
+  mapLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[3],
+    marginTop: spacing[3],
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendLine: {
+    width: 18,
+    height: 4,
+    borderRadius: 2,
+  },
+  legendText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
   },
 });
 
