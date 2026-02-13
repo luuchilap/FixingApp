@@ -83,9 +83,7 @@ export const uploadIdImage = async (imageUri: string): Promise<{ idImageUrl: str
     type,
   } as unknown as Blob);
 
-  const response = await api.post('/users/me/upload-id', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post('/users/me/upload-id', formData);
   return response.data;
 };
 

@@ -22,30 +22,12 @@ export interface Job {
   employerVerified?: boolean; // Employer verification status
 }
 
-export interface Application {
-  id: number;
-  jobId: number;
-  workerId: number;
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'APPLIED';
-  createdAt?: string;
-  appliedAt?: number;
-  worker?: {
-    id: number;
-    phone: string;
-    fullName: string;
-    address?: string;
-    skill?: string;
-    avgRating?: number | null;
-    isVerified: boolean;
-  };
-  job?: {
-    id: number;
-    title: string;
-    price: number;
-    address: string;
-    status: string;
-    employerName?: string;
-    employerVerified?: boolean;
-  };
+/** Shared pagination info used across API responses */
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
 }
 

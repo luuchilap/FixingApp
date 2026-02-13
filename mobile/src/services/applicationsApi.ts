@@ -1,4 +1,7 @@
 import api from './api';
+import { PaginationInfo } from '../types/jobs';
+
+export type { PaginationInfo };
 
 export interface Application {
   id: number;
@@ -52,14 +55,6 @@ export interface ApplicationWithWorker extends Application {
     avgRating?: number | null;
     isVerified: boolean;
   };
-}
-
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
 }
 
 export interface PaginatedApplications {

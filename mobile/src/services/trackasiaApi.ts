@@ -38,12 +38,7 @@ export async function autocomplete(query: string, limit = 5): Promise<LocationSu
     });
     
     const url = `${TRACKASIA_API_BASE}/place/autocomplete/json?${params.toString()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+    const response = await fetch(url);
 
     if (!response.ok) {
       return [];
@@ -82,41 +77,31 @@ export async function getPlaceDetails(placeId: string): Promise<{ latitude: numb
     throw new Error('Place ID is required');
   }
 
-  try {
-    const params = new URLSearchParams({
-      place_id: placeId,
-      key: TRACKASIA_API_KEY,
-      new_admin: 'true'
-    });
-    
-    const url = `${TRACKASIA_API_BASE}/place/details/json?${params.toString()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+  const params = new URLSearchParams({
+    place_id: placeId,
+    key: TRACKASIA_API_KEY,
+    new_admin: 'true'
+  });
+  
+  const url = `${TRACKASIA_API_BASE}/place/details/json?${params.toString()}`;
+  const response = await fetch(url);
 
-    if (!response.ok) {
-      throw new Error(`TrackAsia API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // TrackAsia Place Detail API follows Google Maps Places format
-    if (data.result) {
-      const result = data.result;
-      return {
-        latitude: result.geometry?.location?.lat || 0,
-        longitude: result.geometry?.location?.lng || 0,
-        address: result.formatted_address || result.name || ''
-      };
-    }
-
-    throw new Error('No results found for place_id');
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(`TrackAsia API error: ${response.status}`);
   }
+
+  const data = await response.json();
+  
+  if (data.result) {
+    const result = data.result;
+    return {
+      latitude: result.geometry?.location?.lat || 0,
+      longitude: result.geometry?.location?.lng || 0,
+      address: result.formatted_address || result.name || ''
+    };
+  }
+
+  throw new Error('No results found for place_id');
 }
 
 /**
@@ -127,38 +112,28 @@ export async function reverseGeocode(latitude: number, longitude: number): Promi
     throw new Error('TRACKASIA_API_KEY not configured');
   }
 
-  try {
-    const params = new URLSearchParams({
-      latlng: `${latitude},${longitude}`,
-      key: TRACKASIA_API_KEY,
-      result_type: 'street_address',
-      size: '1',
-      new_admin: 'true'
-    });
-    
-    const url = `${TRACKASIA_API_BASE}/geocode/json?${params.toString()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+  const params = new URLSearchParams({
+    latlng: `${latitude},${longitude}`,
+    key: TRACKASIA_API_KEY,
+    result_type: 'street_address',
+    size: '1',
+    new_admin: 'true'
+  });
+  
+  const url = `${TRACKASIA_API_BASE}/geocode/json?${params.toString()}`;
+  const response = await fetch(url);
 
-    if (!response.ok) {
-      throw new Error(`TrackAsia API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // TrackAsia Reverse Geocoding API follows Google Maps Geocoding format
-    if (data.results && data.results.length > 0) {
-      return data.results[0].formatted_address || '';
-    }
-
-    throw new Error('No results found for coordinates');
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(`TrackAsia API error: ${response.status}`);
   }
+
+  const data = await response.json();
+  
+  if (data.results && data.results.length > 0) {
+    return data.results[0].formatted_address || '';
+  }
+
+  throw new Error('No results found for coordinates');
 }
 
 /**
@@ -173,46 +148,34 @@ export async function geocode(address: string): Promise<{ latitude: number; long
     throw new Error('Address is required');
   }
 
-  try {
-    // Use Text Search API for geocoding (endpoint: /place/textsearch/json)
-    const params = new URLSearchParams({
-      query: address,
-      key: TRACKASIA_API_KEY,
-      new_admin: 'true'
-    });
-    
-    const url = `${TRACKASIA_API_BASE}/place/textsearch/json?${params.toString()}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+  const params = new URLSearchParams({
+    query: address,
+    key: TRACKASIA_API_KEY,
+    new_admin: 'true'
+  });
+  
+  const url = `${TRACKASIA_API_BASE}/place/textsearch/json?${params.toString()}`;
+  const response = await fetch(url);
 
-    if (!response.ok) {
-      throw new Error(`TrackAsia API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // TrackAsia Text Search API follows Google Maps Places API format
-    // Response has status and results array
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const result = data.results[0];
-      return {
-        latitude: result.geometry?.location?.lat || 0,
-        longitude: result.geometry?.location?.lng || 0,
-        address: result.formatted_address || result.name || address
-      };
-    }
-
-    if (data.status === 'ZERO_RESULTS') {
-      throw new Error('No results found for address');
-    }
-
-    throw new Error(`Geocoding failed: ${data.status || 'Unknown error'}`);
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(`TrackAsia API error: ${response.status}`);
   }
+
+  const data = await response.json();
+  
+  if (data.status === 'OK' && data.results && data.results.length > 0) {
+    const result = data.results[0];
+    return {
+      latitude: result.geometry?.location?.lat || 0,
+      longitude: result.geometry?.location?.lng || 0,
+      address: result.formatted_address || result.name || address
+    };
+  }
+
+  if (data.status === 'ZERO_RESULTS') {
+    throw new Error('No results found for address');
+  }
+
+  throw new Error(`Geocoding failed: ${data.status || 'Unknown error'}`);
 }
 

@@ -1,4 +1,5 @@
 import api from './api';
+import { PaginationInfo } from '../types/jobs';
 
 export interface Notification {
   id: number;
@@ -10,15 +11,7 @@ export interface Notification {
   createdAt: number;
 }
 
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
-
-export interface PaginatedNotifications {
+interface PaginatedNotifications {
   data: Notification[];
   pagination: PaginationInfo;
 }

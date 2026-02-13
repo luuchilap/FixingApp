@@ -1,5 +1,7 @@
 import api from './api';
-import { Job } from '../types/jobs';
+import { Job, PaginationInfo } from '../types/jobs';
+
+export type { PaginationInfo };
 
 export interface ListJobsParams {
   keyword?: string;
@@ -15,19 +17,8 @@ export interface ListJobsParams {
   limit?: number;
 }
 
-export interface JobWithImages extends Job {
-  employerName?: string;
-  employerPhone?: string;
-  images?: Array<{ type?: string; url: string }>;
-}
-
-export interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
+/** Job is already complete — this alias keeps naming explicit at call sites */
+export type JobWithImages = Job;
 
 export interface PaginatedResponse<T> {
   data: T[];
@@ -58,14 +49,10 @@ export const getMyJobs = async (): Promise<JobWithImages[]> => {
   return response.data;
 };
 
-// Note: applyToJob has been moved to applicationsApi.ts
-
 /**
  * Create a new job (Employer only)
  */
 export const createJob = async (formData: FormData): Promise<JobWithImages> => {
-  // Axios will automatically set Content-Type with boundary for FormData
-  // The interceptor already handles removing Content-Type for FormData
   const response = await api.post<JobWithImages>('/jobs', formData);
   return response.data;
 };

@@ -117,19 +117,5 @@ export const markConversationAsRead = async (conversationId: number): Promise<vo
   await api.put(`/conversations/${conversationId}/read`);
 };
 
-/**
- * Get unread message count for a conversation
- */
-export const getUnreadCount = async (conversationId: number): Promise<number> => {
-  const response = await api.get<{ unreadCount: number }>(`/conversations/${conversationId}/unread`);
-  return response.data.unreadCount;
-};
 
-/**
- * Get total unread count for all conversations
- */
-export const getTotalUnreadCount = async (): Promise<number> => {
-  const response = await api.get<{ unreadCount: number }>('/conversations/unread/total');
-  return response.data.unreadCount;
-};
 

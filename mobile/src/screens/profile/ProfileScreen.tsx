@@ -420,7 +420,7 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.emptyText}>Chưa ứng tuyển công việc nào</Text>
               <Button
                 title="Tìm công việc"
-                onPress={() => navigation.navigate('MainTabs', { screen: 'Jobs' })}
+                onPress={() => navigation.navigate('MainTabs')}
                 variant="primary"
                 size="sm"
                 style={styles.emptyButton}
