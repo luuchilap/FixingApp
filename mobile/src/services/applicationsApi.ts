@@ -26,6 +26,7 @@ export interface Application {
     address: string;
     status: string;
     employerName?: string;
+    employerVerified?: boolean;
   };
 }
 
@@ -37,6 +38,7 @@ export interface ApplicationWithJob extends Application {
     address: string;
     status: string;
     employerName?: string;
+    employerVerified?: boolean;
   };
 }
 

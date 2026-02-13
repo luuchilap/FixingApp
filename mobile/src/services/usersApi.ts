@@ -6,6 +6,8 @@ export interface UserProfile {
   fullName: string;
   address?: string;
   role: string;
+  idImageUrl?: string | null;
+  verificationStatus?: string;
   createdAt: number | string;
   updatedAt?: number | string;
 }
@@ -63,6 +65,27 @@ export const getUserLocation = async (
   userId: number
 ): Promise<UserLocationResponse> => {
   const response = await api.get<UserLocationResponse>(`/users/${userId}/location`);
+  return response.data;
+};
+
+/**
+ * Upload ID card / certificate image for verification
+ */
+export const uploadIdImage = async (imageUri: string): Promise<{ idImageUrl: string; verificationStatus: string }> => {
+  const formData = new FormData();
+  const filename = imageUri.split('/').pop() || 'photo.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+  formData.append('image', {
+    uri: imageUri,
+    name: filename,
+    type,
+  } as unknown as Blob);
+
+  const response = await api.post('/users/me/upload-id', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 };
 

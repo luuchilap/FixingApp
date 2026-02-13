@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   TouchableOpacityProps,
 } from 'react-native';
-import { colors, spacing, borderRadius, shadows, components } from '../../constants/designTokens';
+import { colors, spacing, shadows, components } from '../../constants/designTokens';
 
 export type CardVariant = 'default' | 'elevated' | 'outlined' | 'flat';
 

@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   Modal,
   FlatList,
-  SafeAreaView,
-  Platform,
 } from 'react-native';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 
@@ -75,7 +73,7 @@ export const Select: React.FC<SelectProps> = ({
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
-          <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{label || 'Chọn một mục'}</Text>
@@ -112,7 +110,7 @@ export const Select: React.FC<SelectProps> = ({
                 style={styles.optionsList}
               />
             </View>
-          </SafeAreaView>
+          </View>
         </TouchableOpacity>
       </Modal>
     </View>

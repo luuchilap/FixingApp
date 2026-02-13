@@ -102,7 +102,6 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
     const routeJS = route
       ? `
       (function() {
-        var routeLine = null;
         var routeInfoDiv = document.getElementById('route-info');
 
         function drawRoute() {
@@ -113,7 +112,7 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
 
           var url = 'https://router.project-osrm.org/route/v1/driving/' +
             fromLng + ',' + fromLat + ';' + toLng + ',' + toLat +
-            '?overview=full&geometries=geojson&steps=true';
+            '?overview=full&geometries=geojson';
 
           fetch(url)
             .then(function(res) { return res.json(); })
@@ -124,15 +123,10 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
                   return [c[1], c[0]];
                 });
 
-                if (routeLine) {
-                  map.removeLayer(routeLine);
-                }
-
-                routeLine = L.polyline(coords, {
+                L.polyline(coords, {
                   color: '#0284c7',
                   weight: 5,
                   opacity: 0.8,
-                  dashArray: null,
                   lineCap: 'round',
                   lineJoin: 'round'
                 }).addTo(map);
@@ -166,10 +160,9 @@ export const JobLocationMap: React.FC<JobLocationMapProps> = ({
                 }
               }
             })
-            .catch(function(err) {
+            .catch(function() {
               // Fallback: draw straight dashed line
-              if (routeLine) map.removeLayer(routeLine);
-              routeLine = L.polyline(
+              L.polyline(
                 [[fromLat, fromLng], [toLat, toLng]],
                 { color: '#0284c7', weight: 3, opacity: 0.6, dashArray: '10, 8' }
               ).addTo(map);

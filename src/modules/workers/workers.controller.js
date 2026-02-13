@@ -21,6 +21,7 @@ async function listWorkers(req, res, next) {
         u.full_name,
         u.address,
         u.created_at,
+        u.verification_status,
         wp.skill,
         wp.avg_rating,
         wp.is_verified
@@ -56,7 +57,7 @@ async function listWorkers(req, res, next) {
       address: worker.address,
       skill: worker.skill,
       avgRating: worker.avg_rating || 0,
-      isVerified: worker.is_verified === true,
+      isVerified: worker.is_verified === true || worker.verification_status === 'APPROVED',
       createdAt: worker.created_at
     }));
 
@@ -80,6 +81,7 @@ async function getWorkerById(req, res, next) {
         u.full_name,
         u.address,
         u.created_at,
+        u.verification_status,
         wp.skill,
         wp.avg_rating,
         wp.is_verified
@@ -114,7 +116,7 @@ async function getWorkerById(req, res, next) {
       address: worker.address,
       skill: worker.skill,
       avgRating: worker.avg_rating || 0,
-      isVerified: worker.is_verified === true,
+      isVerified: worker.is_verified === true || worker.verification_status === 'APPROVED',
       createdAt: worker.created_at,
       certificates: certificatesResult.rows.map(cert => ({
         id: cert.id,

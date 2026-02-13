@@ -5,22 +5,37 @@
 
 const db = require('../../config/db');
 
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Delete notifications older than 24 hours to keep the database clean
+ */
+async function cleanupOldNotifications() {
+  const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+  await db.query('DELETE FROM notifications WHERE created_at < $1', [cutoff]);
+}
+
 /**
  * Get user's notifications with pagination
+ * Only returns notifications from the last 24 hours
  */
 async function getNotifications(req, res, next) {
   try {
     const userId = req.user.id;
     const { unreadOnly, page = 1, limit = 20 } = req.query;
 
+    // Clean up notifications older than 24 hours
+    await cleanupOldNotifications();
+
     // Parse pagination params
     const pageNum = Math.max(1, parseInt(page) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 20));
     const offset = (pageNum - 1) * limitNum;
 
-    let whereClause = 'WHERE user_id = $1';
-    const params = [userId];
-    let paramIndex = 2;
+    const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+    let whereClause = 'WHERE user_id = $1 AND created_at >= $2';
+    const params = [userId, cutoff];
+    let paramIndex = 3;
 
     if (unreadOnly === 'true') {
       whereClause += ' AND is_read = FALSE';
@@ -117,5 +132,6 @@ async function sendNotification(userId, content, metadata = {}) {
 module.exports = {
   getNotifications,
   markAsRead,
-  sendNotification
+  sendNotification,
+  cleanupOldNotifications
 };

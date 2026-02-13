@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-const DEV_MACHINE_IP = '192.168.1.7';
+const DEV_MACHINE_IP = '192.168.1.6';
 
 const isDevice = Constants.executionEnvironment === 'storeClient' ||
   (Constants.executionEnvironment === 'standalone');
@@ -15,10 +15,10 @@ const getDevBaseUrl = () => {
     return `http://${DEV_MACHINE_IP}:3000/api`;
   }
 };
-
+// BASE_URL: 'https://fixingapp.vercel.app/api', use this when deployed
 export const API_CONFIG = {
-  // Dùng backend online cho cả dev & prod
-  BASE_URL: 'https://fixing-app.vercel.app/api',
+  // Dùng local server để test trước khi deploy lên Vercel
+  BASE_URL: getDevBaseUrl(),
   TIMEOUT: 10000,
   STORAGE_KEYS: {
     AUTH_TOKEN: 'authToken',

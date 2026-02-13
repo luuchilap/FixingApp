@@ -202,6 +202,14 @@ async function login(req, res, next) {
     }
     const user = userResult.rows[0];
 
+    // Check if account is locked
+    if (user.is_locked === true) {
+      return res.status(403).json({
+        error: 'Account locked',
+        message: 'Tài khoản của bạn đã bị khoá. Vui lòng liên hệ admin.'
+      });
+    }
+
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {

@@ -19,6 +19,7 @@ export interface Job {
   latitude?: number | string | null; // Latitude coordinate
   longitude?: number | string | null; // Longitude coordinate
   distance?: number | null; // Distance in kilometers
+  employerVerified?: boolean; // Employer verification status
 }
 
 export interface Application {
@@ -44,6 +45,7 @@ export interface Application {
     address: string;
     status: string;
     employerName?: string;
+    employerVerified?: boolean;
   };
 }
 

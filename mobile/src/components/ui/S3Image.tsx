@@ -83,9 +83,8 @@ export const S3Image: React.FC<S3ImageProps> = ({
           if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
           setIsLoading(false);
         }}
-        onError={(error) => {
+        onError={() => {
           if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
-          console.warn('S3Image load error:', uri, error.nativeEvent.error);
           setIsLoading(false);
           setHasError(true);
         }}

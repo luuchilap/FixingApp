@@ -577,7 +577,14 @@ export const JobDetailScreen: React.FC<JobDetailScreenProps> = ({ route, navigat
         {job.employerName && (
           <View style={styles.infoRow}>
             <Text style={styles.label}>Người đăng</Text>
-            <Text style={styles.value}>{job.employerName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.value}>{job.employerName}</Text>
+              {(job as any).employerVerified && (
+                <View style={{ backgroundColor: '#f6ffed', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 11, color: '#389e0d', fontWeight: '600' }}>✓ Đã xác thực</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
       </Card>

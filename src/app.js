@@ -7,7 +7,15 @@ const express = require('express');
 const cors = require('cors');
 const { setupSwagger } = require('./config/swagger');
 
+const path = require('path');
+
 const app = express();
+
+// Serve admin panel static files
+app.use('/admin', express.static(path.join(__dirname, '..', 'admin-web', 'dist')));
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'admin-web', 'dist', 'index.html'));
+});
 
 // Middleware
 app.use(cors());
@@ -54,9 +62,10 @@ app.use('/api/jobs', require('./modules/jobs/jobs.routes'));
 app.use('/api/applications', require('./modules/applications/applications.routes'));
 app.use('/api/workers', require('./modules/workers/workers.routes'));
 app.use('/api/workers/certificates', require('./modules/certificates/certificates.routes'));
+app.use('/api/admin', require('./modules/admin/admin.routes'));
+app.use('/api/admin-panel', require('./modules/admin/admin-panel.routes'));
 app.use('/api', require('./modules/reviews/reviews.routes'));
 app.use('/api/complaints', require('./modules/complaints/complaints.routes'));
-app.use('/api/admin', require('./modules/admin/admin.routes'));
 app.use('/api/notifications', require('./modules/notifications/notifications.routes'));
 app.use('/api/conversations', require('./modules/conversations/conversations.routes'));
 // etc.

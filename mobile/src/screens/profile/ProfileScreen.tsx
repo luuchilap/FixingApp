@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { AddressAutocomplete } from '../../components/ui/AddressAutocomplete';
-import { getCurrentUser, updateUserProfile, UserProfile } from '../../services/usersApi';
+import { getCurrentUser, updateUserProfile, uploadIdImage, UserProfile } from '../../services/usersApi';
 import { getMyApplications, ApplicationWithJob } from '../../services/applicationsApi';
 import { colors, spacing, typography, borderRadius } from '../../constants/designTokens';
 import { MainStackParamList } from '../../navigation/MainStack';
@@ -46,6 +47,7 @@ export const ProfileScreen: React.FC = () => {
   const [appsPage, setAppsPage] = useState(1);
   const [appsHasMore, setAppsHasMore] = useState(true);
   const [appsTotalCount, setAppsTotalCount] = useState(0);
+  const [uploadingId, setUploadingId] = useState(false);
 
   const isEmployer = user?.role === 'EMPLOYER';
   const isWorker = user?.role === 'WORKER';
@@ -226,6 +228,57 @@ export const ProfileScreen: React.FC = () => {
   const displayPhone = displayProfile?.phone || user?.phone || 'Chưa có';
   const displayAddress = displayProfile?.address || user?.address || '';
   const displayRole = displayProfile?.role || user?.role || 'Chưa có';
+  const verificationStatus = profile?.verificationStatus || 'NONE';
+
+  const getVerificationLabel = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return '✅ Đã xác thực';
+      case 'PENDING': return '⏳ Chờ xác thực';
+      case 'REJECTED': return '❌ Chưa xác thực';
+      default: return '⚠️ Chưa xác thực';
+    }
+  };
+
+  const getVerificationColor = (status: string) => {
+    switch (status) {
+      case 'APPROVED': return '#389e0d';
+      case 'PENDING': return '#fa8c16';
+      case 'REJECTED': return '#cf1322';
+      default: return colors.text.tertiary;
+    }
+  };
+
+  const handleUploadId = async () => {
+    try {
+      const permResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permResult.granted) {
+        Alert.alert('Quyền truy cập', 'Cần quyền truy cập thư viện ảnh để upload.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+
+      setUploadingId(true);
+      const res = await uploadIdImage(result.assets[0].uri);
+      setProfile(prev => prev ? {
+        ...prev,
+        idImageUrl: res.idImageUrl,
+        verificationStatus: res.verificationStatus,
+      } : prev);
+      Alert.alert('Thành công', 'Ảnh đã được gửi. Vui lòng chờ admin xác thực.');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Không thể upload ảnh';
+      Alert.alert('Lỗi', msg);
+    } finally {
+      setUploadingId(false);
+    }
+  };
 
   const getRoleLabel = (role: string): string => {
     const roleMap: Record<string, string> = {
@@ -306,6 +359,33 @@ export const ProfileScreen: React.FC = () => {
               <View style={styles.profileItem}>
                 <Text style={styles.label}>Địa chỉ</Text>
                 <Text style={styles.value}>{displayAddress}</Text>
+              </View>
+            )}
+
+            {/* Verification Status */}
+            <View style={styles.profileItem}>
+              <Text style={styles.label}>Xác thực danh tính</Text>
+              <Text style={[styles.value, { color: getVerificationColor(verificationStatus) }]}>
+                {getVerificationLabel(verificationStatus)}
+              </Text>
+            </View>
+
+            {/* Upload ID Image */}
+            {verificationStatus !== 'APPROVED' && (
+              <View style={styles.uploadSection}>
+                <Text style={styles.uploadHint}>
+                  {verificationStatus === 'PENDING'
+                    ? 'Ảnh đang chờ admin xác thực. Bạn có thể upload lại nếu muốn.'
+                    : 'Upload ảnh CCCD hoặc chứng chỉ hành nghề để được xác thực.'}
+                </Text>
+                <Button
+                  title={uploadingId ? 'Đang upload...' : '📷 Upload ảnh xác thực'}
+                  onPress={handleUploadId}
+                  variant="outline"
+                  fullWidth
+                  loading={uploadingId}
+                  disabled={uploadingId}
+                />
               </View>
             )}
 
@@ -470,6 +550,19 @@ const styles = StyleSheet.create({
   },
   editButton: {
     marginTop: spacing[4],
+  },
+  uploadSection: {
+    marginTop: spacing[2],
+    marginBottom: spacing[2],
+    paddingTop: spacing[3],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  uploadHint: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing[3],
+    lineHeight: 20,
   },
   actionsCard: {
     marginBottom: spacing[4],

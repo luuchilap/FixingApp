@@ -54,9 +54,9 @@ export const Input: React.FC<InputProps> = ({
           style={[
             styles.input,
             styles[`input_${size}`],
-            hasError && styles.input_error,
-            leftIcon && styles.input_withLeftIcon,
-            rightIcon && styles.input_withRightIcon,
+            hasError ? styles.input_error : undefined,
+            leftIcon ? styles.input_withLeftIcon : undefined,
+            rightIcon ? styles.input_withRightIcon : undefined,
             style,
           ]}
           placeholderTextColor={colors.text.tertiary}

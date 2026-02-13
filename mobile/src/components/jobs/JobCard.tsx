@@ -151,7 +151,14 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onPress }) => {
             </View>
           )}
 
-          <Text style={styles.time}>{formatDate(job.createdAt)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={styles.time}>{formatDate(job.createdAt)}</Text>
+            {(job as any).employerVerified && (
+              <View style={{ backgroundColor: '#f6ffed', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
+                <Text style={{ fontSize: 10, color: '#389e0d', fontWeight: '600' }}>✓ Đã xác thực</Text>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     </Card>

@@ -123,6 +123,7 @@ async function getJobApplications(req, res, next) {
         u.phone as worker_phone,
         u.full_name as worker_full_name,
         u.address as worker_address,
+        u.verification_status as worker_verification_status,
         wp.skill as worker_skill,
         wp.avg_rating as worker_avg_rating,
         wp.is_verified as worker_is_verified
@@ -148,7 +149,7 @@ async function getJobApplications(req, res, next) {
         address: app.worker_address,
         skill: app.worker_skill,
         avgRating: app.worker_avg_rating ? parseFloat(app.worker_avg_rating) : null,
-        isVerified: app.worker_is_verified === true
+        isVerified: app.worker_is_verified === true || app.worker_verification_status === 'APPROVED'
       }
     }));
 
@@ -393,7 +394,8 @@ async function getMyApplications(req, res, next) {
         j.status as job_status,
         j.price as job_price,
         j.address as job_address,
-        u.full_name as employer_name
+        u.full_name as employer_name,
+        u.verification_status as employer_verification_status
       FROM job_applications ja
       JOIN jobs j ON ja.job_id = j.id
       LEFT JOIN users u ON j.employer_id = u.id
@@ -419,7 +421,8 @@ async function getMyApplications(req, res, next) {
         status: app.job_status,
         price: app.job_price,
         address: app.job_address,
-        employerName: app.employer_name
+        employerName: app.employer_name,
+        employerVerified: app.employer_verification_status === 'APPROVED'
       }
     }));
 

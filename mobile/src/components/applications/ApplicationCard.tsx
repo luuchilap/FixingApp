@@ -145,6 +145,11 @@ export const ApplicationCard: React.FC<ApplicationCardProps> = ({
               {application.job.status ? (
                 <Text style={styles.label}>Trạng thái công việc: {application.job.status}</Text>
               ) : null}
+              {(application.job as any).employerVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Text style={styles.verifiedText}>✓ Nhà tuyển dụng đã xác thực</Text>
+                </View>
+              )}
             </View>
           )}
           {isEmployerView && application.worker && (

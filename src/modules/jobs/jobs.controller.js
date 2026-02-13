@@ -65,7 +65,7 @@ async function notifyNearbyWorkersForJob(job, radiusKm = 5) {
  */
 async function getJobWithImages(jobId) {
   const jobResult = await db.query(`
-    SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
+    SELECT j.*, u.full_name as employer_name, u.phone as employer_phone, u.verification_status as employer_verification_status
     FROM jobs j
     JOIN users u ON j.employer_id = u.id
     WHERE j.id = $1
@@ -83,6 +83,7 @@ async function getJobWithImages(jobId) {
     employerId: job.employer_id,
     employerName: job.employer_name,
     employerPhone: job.employer_phone,
+    employerVerified: job.employer_verification_status === 'APPROVED',
     title: job.title,
     description: job.description,
     price: job.price,
@@ -313,7 +314,7 @@ async function listJobs(req, res, next) {
 
     // Get paginated results
     const query = `
-      SELECT j.*, u.full_name as employer_name, u.phone as employer_phone
+      SELECT j.*, u.full_name as employer_name, u.phone as employer_phone, u.verification_status as employer_verification_status
       FROM jobs j
       JOIN users u ON j.employer_id = u.id
       ${whereClause}
@@ -347,6 +348,7 @@ async function listJobs(req, res, next) {
       employerId: job.employer_id,
       employerName: job.employer_name,
       employerPhone: job.employer_phone,
+      employerVerified: job.employer_verification_status === 'APPROVED',
       title: job.title,
       description: job.description,
       price: job.price,
