@@ -147,8 +147,196 @@ async function setVerificationStatus(req, res, next) {
   }
 }
 
+// ==================== KNOWLEDGE ARTICLES ====================
+
+/**
+ * Get all knowledge articles for admin
+ */
+async function getKnowledgeArticles(req, res, next) {
+  try {
+    const { category, search } = req.query;
+
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (category) {
+      whereConditions.push(`category = $${paramIndex}`);
+      params.push(category);
+      paramIndex++;
+    }
+
+    if (search) {
+      whereConditions.push(`(title ILIKE $${paramIndex} OR summary ILIKE $${paramIndex})`);
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0
+      ? 'WHERE ' + whereConditions.join(' AND ')
+      : '';
+
+    const result = await db.query(
+      `SELECT * FROM knowledge_articles ${whereClause} ORDER BY created_at DESC`,
+      params
+    );
+
+    const articles = result.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      content: row.content,
+      category: row.category,
+      thumbnailUrl: row.thumbnail_url,
+      authorName: row.author_name,
+      isPublished: row.is_published,
+      viewCount: row.view_count,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    res.status(200).json({ data: articles, total: articles.length });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Create a knowledge article
+ */
+async function createKnowledgeArticle(req, res, next) {
+  try {
+    const { title, summary, content, category, authorName } = req.body;
+
+    if (!title || !summary || !content || !category) {
+      return res.status(400).json({ error: 'Vui lòng điền đầy đủ tiêu đề, tóm tắt, nội dung và danh mục' });
+    }
+
+    const now = Date.now();
+    const result = await db.query(
+      `INSERT INTO knowledge_articles (title, summary, content, category, author_name, is_published, view_count, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, 0, $6, $7)
+       RETURNING *`,
+      [title, summary, content, category, authorName || 'Admin', now, now]
+    );
+
+    const row = result.rows[0];
+    res.status(201).json({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      content: row.content,
+      category: row.category,
+      thumbnailUrl: row.thumbnail_url,
+      authorName: row.author_name,
+      isPublished: row.is_published,
+      viewCount: row.view_count,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Update a knowledge article
+ */
+async function updateKnowledgeArticle(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { title, summary, content, category, authorName, isPublished } = req.body;
+
+    const existing = await db.query('SELECT * FROM knowledge_articles WHERE id = $1', [parseInt(id)]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Bài viết không tồn tại' });
+    }
+
+    const now = Date.now();
+    const result = await db.query(
+      `UPDATE knowledge_articles
+       SET title = COALESCE($1, title),
+           summary = COALESCE($2, summary),
+           content = COALESCE($3, content),
+           category = COALESCE($4, category),
+           author_name = COALESCE($5, author_name),
+           is_published = COALESCE($6, is_published),
+           updated_at = $7
+       WHERE id = $8
+       RETURNING *`,
+      [title, summary, content, category, authorName, isPublished, now, parseInt(id)]
+    );
+
+    const row = result.rows[0];
+    res.status(200).json({
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      content: row.content,
+      category: row.category,
+      thumbnailUrl: row.thumbnail_url,
+      authorName: row.author_name,
+      isPublished: row.is_published,
+      viewCount: row.view_count,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Delete a knowledge article
+ */
+async function deleteKnowledgeArticle(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query('DELETE FROM knowledge_articles WHERE id = $1 RETURNING id', [parseInt(id)]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Bài viết không tồn tại' });
+    }
+
+    res.status(200).json({ message: 'Đã xóa bài viết thành công' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Toggle publish status of a knowledge article
+ */
+async function toggleKnowledgePublish(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    const existing = await db.query('SELECT id, is_published FROM knowledge_articles WHERE id = $1', [parseInt(id)]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Bài viết không tồn tại' });
+    }
+
+    const newStatus = !existing.rows[0].is_published;
+    const now = Date.now();
+    await db.query('UPDATE knowledge_articles SET is_published = $1, updated_at = $2 WHERE id = $3', [newStatus, now, parseInt(id)]);
+
+    res.status(200).json({
+      id: parseInt(id),
+      isPublished: newStatus,
+      message: newStatus ? 'Đã xuất bản bài viết' : 'Đã ẩn bài viết',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getAllUsers,
   toggleUserLock,
   setVerificationStatus,
+  getKnowledgeArticles,
+  createKnowledgeArticle,
+  updateKnowledgeArticle,
+  deleteKnowledgeArticle,
+  toggleKnowledgePublish,
 };

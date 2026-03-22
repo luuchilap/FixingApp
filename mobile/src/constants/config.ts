@@ -16,9 +16,10 @@ const getDevBaseUrl = () => {
   }
 };
 // BASE_URL: 'https://fixingapp.vercel.app/api', use this when deployed
+// BASE_URL: getDevBaseUrl(),
 export const API_CONFIG = {
   // Dùng local server để test trước khi deploy lên Vercel
-  BASE_URL: getDevBaseUrl(),
+  BASE_URL: 'https://fixing-app.vercel.app/api',
   TIMEOUT: 10000,
   STORAGE_KEYS: {
     AUTH_TOKEN: 'authToken',

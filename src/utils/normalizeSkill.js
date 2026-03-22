@@ -18,6 +18,7 @@ function normalizeSkill(skill) {
         'APPLIANCE_REPAIR',
         'MASONRY',
         'GARDENING',
+        'CARRYING',
         'OTHER'
     ];
 
@@ -39,6 +40,7 @@ function normalizeSkill(skill) {
         'APPLIANCE_REPAIR': 'APPLIANCE_REPAIR',
         'MASONRY': 'MASONRY',
         'GARDENING': 'GARDENING',
+        'CARRYING': 'CARRYING',
         'OTHER': 'OTHER'
     };
 

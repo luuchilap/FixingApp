@@ -11,7 +11,8 @@
     "migrate": "node src/database/migrate.js",
     "seed": "node src/database/seed.js",
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "vercel-build": "cd admin-web && npm install && npm run build"
   },
   "keywords": [],
   "author": "",

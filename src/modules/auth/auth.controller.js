@@ -74,7 +74,7 @@ async function registerEmployer(req, res, next) {
     );
 
     // Get user data
-    const userResult = await db.query('SELECT id, phone, full_name, address, created_at FROM users WHERE id = $1', [result.userId]);
+    const userResult = await db.query('SELECT id, phone, full_name, address, avatar_url, id_image_url, verification_status, created_at FROM users WHERE id = $1', [result.userId]);
     const user = userResult.rows[0];
 
     res.status(201).json({
@@ -84,7 +84,10 @@ async function registerEmployer(req, res, next) {
         phone: user.phone,
         fullName: user.full_name,
         address: user.address,
+        avatarUrl: user.avatar_url || null,
         role: result.roleName,
+        idImageUrl: user.id_image_url || null,
+        verificationStatus: user.verification_status || 'NONE',
         createdAt: user.created_at
       }
     });
@@ -159,7 +162,7 @@ async function registerWorker(req, res, next) {
     );
 
     // Get user data
-    const userResult = await db.query('SELECT id, phone, full_name, address, created_at FROM users WHERE id = $1', [result.userId]);
+    const userResult = await db.query('SELECT id, phone, full_name, address, avatar_url, id_image_url, verification_status, created_at FROM users WHERE id = $1', [result.userId]);
     const user = userResult.rows[0];
 
     res.status(201).json({
@@ -169,7 +172,10 @@ async function registerWorker(req, res, next) {
         phone: user.phone,
         fullName: user.full_name,
         address: user.address,
+        avatarUrl: user.avatar_url || null,
         role: result.roleName,
+        idImageUrl: user.id_image_url || null,
+        verificationStatus: user.verification_status || 'NONE',
         createdAt: user.created_at
       }
     });
@@ -247,7 +253,10 @@ async function login(req, res, next) {
         phone: user.phone,
         fullName: user.full_name,
         address: user.address,
+        avatarUrl: user.avatar_url || null,
         role: userRole.name,
+        idImageUrl: user.id_image_url || null,
+        verificationStatus: user.verification_status || 'NONE',
         createdAt: user.created_at
       }
     });

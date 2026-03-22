@@ -14,6 +14,7 @@ export type SkillValue =
   | 'DELIVERY'
   | 'ERRANDS'
   | 'MISC_TASKS'
+  | 'CARRYING'
   | 'OTHER';
 
 export interface SkillOption {
@@ -38,5 +39,6 @@ export const SKILLS: SkillOption[] = [
   { value: 'ERRANDS', label: 'Việc vặt', icon: 'run-fast', color: '#0ea5e9' },
   { value: 'ENTERTAINMENT', label: 'Giải trí', icon: 'party-popper', color: '#d946ef' },
   { value: 'MISC_TASKS', label: 'Tạp vụ', icon: 'hand-heart', color: '#14b8a6' },
+  { value: 'CARRYING', label: 'Bê vác', icon: 'weight-lifter', color: '#78716c' },
   { value: 'OTHER', label: 'Khác', icon: 'dots-horizontal-circle', color: '#64748b' },
 ];

@@ -11,7 +11,8 @@ const {
   updateCurrentUser,
   updateMyLocation,
   getUserLocation,
-  uploadIdImage
+  uploadIdImage,
+  uploadAvatar
 } = require('./users.controller');
 
 // Configure multer for memory storage
@@ -27,6 +28,7 @@ router.get('/me', getCurrentUser);
 router.put('/me', updateCurrentUser);
 router.put('/me/location', updateMyLocation);
 router.post('/me/upload-id', upload.single('image'), uploadIdImage);
+router.post('/me/upload-avatar', upload.single('image'), uploadAvatar);
 router.get('/:userId/location', getUserLocation);
 
 module.exports = router;

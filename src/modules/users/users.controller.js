@@ -17,7 +17,7 @@ async function getCurrentUser(req, res, next) {
     const userId = req.user.id;
 
     // Get user data
-    const userResult = await db.query('SELECT id, phone, full_name, address, id_image_url, verification_status, created_at FROM users WHERE id = $1', [userId]);
+    const userResult = await db.query('SELECT id, phone, full_name, address, avatar_url, id_image_url, verification_status, created_at FROM users WHERE id = $1', [userId]);
     const user = userResult.rows[0];
 
     if (!user) {
@@ -40,6 +40,7 @@ async function getCurrentUser(req, res, next) {
       phone: user.phone,
       fullName: user.full_name,
       address: user.address,
+      avatarUrl: user.avatar_url || null,
       role: userRole.name,
       idImageUrl: user.id_image_url || null,
       verificationStatus: user.verification_status || 'NONE',
@@ -90,7 +91,7 @@ async function updateCurrentUser(req, res, next) {
     await db.query(updateQuery, values);
 
     // Get updated user data
-    const userResult = await db.query('SELECT id, phone, full_name, address, created_at, updated_at FROM users WHERE id = $1', [userId]);
+    const userResult = await db.query('SELECT id, phone, full_name, address, avatar_url, id_image_url, verification_status, created_at, updated_at FROM users WHERE id = $1', [userId]);
     const user = userResult.rows[0];
 
     // Get user role
@@ -107,7 +108,10 @@ async function updateCurrentUser(req, res, next) {
       phone: user.phone,
       fullName: user.full_name,
       address: user.address,
+      avatarUrl: user.avatar_url || null,
       role: userRole.name,
+      idImageUrl: user.id_image_url || null,
+      verificationStatus: user.verification_status || 'NONE',
       createdAt: user.created_at,
       updatedAt: user.updated_at
     });
@@ -251,10 +255,53 @@ async function uploadIdImage(req, res, next) {
   }
 }
 
+/**
+ * Upload avatar image
+ */
+async function uploadAvatar(req, res, next) {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Vui lòng chọn ảnh để upload' });
+    }
+
+    // Upload to S3
+    const fileExtension = pathLib.extname(req.file.originalname || '.jpg');
+    const fileName = `${crypto.randomBytes(16).toString('hex')}${fileExtension}`;
+    const key = `avatars/${userId}/${fileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: key,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+    });
+
+    await s3Client.send(command);
+    const imageUrl = `https://${bucketName}.s3.${process.env.AWS_S3_REGION}.amazonaws.com/${key}`;
+
+    // Update user record
+    const now = Date.now();
+    await db.query(
+      'UPDATE users SET avatar_url = $1, updated_at = $2 WHERE id = $3',
+      [imageUrl, now, userId]
+    );
+
+    res.status(200).json({
+      message: 'Cập nhật ảnh đại diện thành công',
+      avatarUrl: imageUrl,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getCurrentUser,
   updateCurrentUser,
   updateMyLocation,
   getUserLocation,
-  uploadIdImage
+  uploadIdImage,
+  uploadAvatar
 };
